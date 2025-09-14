@@ -2,6 +2,9 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Login from './components/Login';
 import EmployeeDashboard from './components/EmployeeDashboard';
+import DepartmentDashboard from './components/DepartmentDashboard';
+import DepartmentLeaveRequests from './components/DepartmentLeaveRequests';
+import DepartmentLeaveRequestDetails from './components/DepartmentLeaveRequestDetails';
 import RequestLeave from './components/RequestLeave';
 import LeaveHistory from './components/LeaveHistory';
 import Profile from './components/Profile';
@@ -17,6 +20,9 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
+          <Route path="/department/dashboard" element={<DepartmentDashboard />} />
+          <Route path="/department/leave-requests" element={<DepartmentLeaveRequests />} />
+          <Route path="/department/leave-request/:id" element={<DepartmentLeaveRequestDetails />} />
           <Route path="/employee/request-leave" element={<RequestLeave />} />
           <Route path="/employee/leave-history" element={<LeaveHistory />} />
           <Route path="/employee/profile" element={<Profile />} />

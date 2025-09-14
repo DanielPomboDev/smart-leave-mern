@@ -68,13 +68,9 @@ const leaveRequestSchema = new mongoose.Schema({
 leaveRequestSchema.pre(/^find/, function(next) {
   this.populate({
     path: 'user_id',
-    select: 'first_name last_name middle_initial department_id position',
+    select: 'first_name last_name middle_initial department_id position user_id',
     foreignField: 'user_id',  // Match User's user_id field instead of _id
     localField: 'user_id'     // Use LeaveRequest's user_id field
-  });
-  this.populate({
-    path: 'user_id.department_id',
-    select: 'name'
   });
   next();
 });

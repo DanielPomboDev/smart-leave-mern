@@ -16,6 +16,8 @@ const protect = async (req, res, next) => {
       req.user = await User.findOne({ user_id: decoded.id })
         .populate('department_id', 'name')
         .select('-password');
+      
+      console.log('Authenticated user:', JSON.stringify(req.user, null, 2));
 
       if (!req.user) {
         return res.status(401).json({

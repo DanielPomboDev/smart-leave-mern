@@ -1,16 +1,47 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
 
 const Layout = ({ children, title = "Dashboard" }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-
-  // Sample user data - in a real app, this would come from context or props
-  const user = {
+  const [user, setUser] = useState({
     first_name: "John",
     last_name: "Doe",
     user_type: "employee"
-  };
+  });
+
+  // Fetch user profile on component mount
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          navigate('/login');
+          return;
+        }
+
+        const response = await axios.get('http://localhost:5000/api/auth/profile', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.data.success) {
+          setUser(response.data.user);
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+        // If there's an error, redirect to login
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    };
+
+    fetchUserProfile();
+  }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -31,13 +62,43 @@ const Layout = ({ children, title = "Dashboard" }) => {
   };
 
   // Navigation items based on user type
-  const navItems = [
-    { label: "Dashboard", icon: "fas fa-home", route: "/employee/dashboard" },
-    { label: "Leave History", icon: "fas fa-history", route: "/employee/leave-history" },
-    { label: "Request Leave", icon: "fas fa-calendar-plus", route: "/employee/request-leave" },
-    { label: "Profile", icon: "fas fa-user", route: "/employee/profile" },
-    { label: "Settings", icon: "fas fa-cog", route: "/employee/settings" }
-  ];
+  const getNavItems = () => {
+    switch (user.user_type) {
+      case 'department_admin':
+        return [
+          { label: "Dashboard", icon: "fas fa-home", route: "/department/dashboard" },
+          { label: "Leave Requests", icon: "fas fa-history", route: "/department/leave-requests" },
+          { label: "Profile", icon: "fas fa-user", route: "/employee/profile" },
+          { label: "Settings", icon: "fas fa-cog", route: "/employee/settings" }
+        ];
+      case 'hr':
+        return [
+          { label: "Dashboard", icon: "fas fa-home", route: "/hr/dashboard" },
+          { label: "Employees", icon: "fas fa-users", route: "/hr/employees" },
+          { label: "Leave Records", icon: "fas fa-file-alt", route: "/hr/leave-records" },
+          { label: "Leave Requests", icon: "fas fa-history", route: "/hr/leave-requests" },
+          { label: "Profile", icon: "fas fa-user", route: "/employee/profile" },
+          { label: "Settings", icon: "fas fa-cog", route: "/employee/settings" }
+        ];
+      case 'mayor':
+        return [
+          { label: "Dashboard", icon: "fas fa-home", route: "/mayor/dashboard" },
+          { label: "Leave Requests", icon: "fas fa-history", route: "/mayor/leave-requests" },
+          { label: "Profile", icon: "fas fa-user", route: "/employee/profile" },
+          { label: "Settings", icon: "fas fa-cog", route: "/employee/settings" }
+        ];
+      default: // employee
+        return [
+          { label: "Dashboard", icon: "fas fa-home", route: "/employee/dashboard" },
+          { label: "Leave History", icon: "fas fa-history", route: "/employee/leave-history" },
+          { label: "Request Leave", icon: "fas fa-calendar-plus", route: "/employee/request-leave" },
+          { label: "Profile", icon: "fas fa-user", route: "/employee/profile" },
+          { label: "Settings", icon: "fas fa-cog", route: "/employee/settings" }
+        ];
+    }
+  };
+
+  const navItems = getNavItems();
 
   return (
     <div className="flex h-screen bg-base-200">
@@ -62,7 +123,9 @@ const Layout = ({ children, title = "Dashboard" }) => {
             <Link
               key={index}
               to={item.route}
-              className="flex items-center px-6 py-3 text-gray-600 font-medium hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200"
+              className={`flex items-center px-6 py-3 text-gray-600 font-medium hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200 ${
+                location.pathname === item.route ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-500' : ''
+              }`}
             >
               <i className={`${item.icon} mr-3 text-lg`}></i>
               <span>{item.label}</span>
@@ -101,7 +164,10 @@ const Layout = ({ children, title = "Dashboard" }) => {
                   {user.first_name} {user.last_name}
                 </span>
                 <span className="text-xs font-medium text-gray-500">
-                  {user.user_type.charAt(0).toUpperCase() + user.user_type.slice(1)}
+                  {user.user_type === 'department_admin' ? 'Department Admin' : 
+                   user.user_type === 'hr' ? 'HR Officer' : 
+                   user.user_type === 'mayor' ? 'Mayor' : 
+                   'Employee'}
                 </span>
               </div>
 

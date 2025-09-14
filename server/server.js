@@ -40,6 +40,10 @@ app.use('/api/auth', authRoutes);
 const leaveRoutes = require('./routes/leave');
 app.use('/api/leave-requests', leaveRoutes);
 
+// Department routes
+const departmentRoutes = require('./routes/department');
+app.use('/api/department', departmentRoutes);
+
 // Settings routes
 const settingsRoutes = require('./routes/settings');
 app.use('/api/settings', settingsRoutes);
