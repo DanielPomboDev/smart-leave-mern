@@ -1,0 +1,169 @@
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+
+const Layout = ({ children, title = "Dashboard" }) => {
+  const navigate = useNavigate();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  // Sample user data - in a real app, this would come from context or props
+  const user = {
+    first_name: "John",
+    last_name: "Doe",
+    user_type: "employee"
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
+  };
+
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutModal(false);
+    handleLogout();
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutModal(false);
+  };
+
+  // Navigation items based on user type
+  const navItems = [
+    { label: "Dashboard", icon: "fas fa-home", route: "/employee/dashboard" },
+    { label: "Leave History", icon: "fas fa-history", route: "/employee/leave-history" },
+    { label: "Request Leave", icon: "fas fa-calendar-plus", route: "/employee/request-leave" },
+    { label: "Profile", icon: "fas fa-user", route: "/employee/profile" },
+    { label: "Settings", icon: "fas fa-cog", route: "/employee/settings" }
+  ];
+
+  return (
+    <div className="flex h-screen bg-base-200">
+      {/* Sidebar */}
+      <div className="w-72 bg-white shadow-md flex flex-col h-screen">
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center">
+            <div className="avatar">
+              <div className="w-12 rounded-full">
+                <img src="/images/sj-logo.jpg" alt="Logo" />
+              </div>
+            </div>
+            <div className="ml-4">
+              <h1 className="text-xl font-bold text-blue-500">SmartLeave</h1>
+              <h3 className="text-sm font-semibold text-gray-500">LGU San Julian, Eastern Samar</h3>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-grow py-4">
+          {navItems.map((item, index) => (
+            <Link
+              key={index}
+              to={item.route}
+              className="flex items-center px-6 py-3 text-gray-600 font-medium hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200"
+            >
+              <i className={`${item.icon} mr-3 text-lg`}></i>
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+
+        {/* Logout button at bottom */}
+        <div className="p-4 border-t border-gray-200">
+          <button 
+            onClick={handleLogoutClick}
+            className="flex items-center px-6 py-3 text-gray-600 font-medium hover:bg-blue-50 transition-colors duration-200 w-full text-left"
+          >
+            <i className="fas fa-sign-out-alt mr-3 text-lg"></i>
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="flex-grow overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-semibold text-gray-800">{title}</h1>
+
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <button className="text-gray-600 hover:text-blue-500 focus:outline-none" type="button">
+                  <i className="fas fa-bell text-xl"></i>
+                  <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full hidden"></span>
+                </button>
+              </div>
+
+              <div className="flex flex-col items-end">
+                <span className="text-sm font-bold text-gray-600">
+                  {user.first_name} {user.last_name}
+                </span>
+                <span className="text-xs font-medium text-gray-500">
+                  {user.user_type.charAt(0).toUpperCase() + user.user_type.slice(1)}
+                </span>
+              </div>
+
+              <div className="avatar placeholder">
+                <div className="bg-neutral text-neutral-content w-12 rounded-full">
+                  <span className="text-xl">
+                    {user.first_name.charAt(0)}{user.last_name.charAt(0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Main content */}
+          {children}
+        </div>
+      </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={cancelLogout}
+          ></div>
+          
+          {/* Modal */}
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-w-md z-10">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <i className="fas fa-sign-out-alt text-red-600 text-2xl"></i>
+              </div>
+              
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Confirm Logout</h3>
+              
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to logout? You will need to log back in to access your account.
+              </p>
+              
+              <div className="flex justify-center space-x-3">
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium rounded-md"
+                  onClick={cancelLogout}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md"
+                  onClick={confirmLogout}
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Layout;
