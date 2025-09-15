@@ -34,14 +34,19 @@ const updatePassword = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Log for debugging
+    console.log('User from request:', req.user);
+    
     // Update user password using the custom user_id field
+    // req.user.user_id corresponds to the user_id field in the User model
     const updatedUser = await User.findOneAndUpdate(
-      { user_id: req.user.id },
+      { user_id: req.user.user_id },
       { password: hashedPassword },
       { new: true, runValidators: true }
     );
 
     if (!updatedUser) {
+      console.log('User not found with user_id:', req.user.user_id);
       return res.status(404).json({
         success: false,
         message: 'User not found'

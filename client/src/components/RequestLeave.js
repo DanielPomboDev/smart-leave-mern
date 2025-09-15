@@ -403,15 +403,6 @@ const RequestLeave = () => {
 
       <main>
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          {/* Error Message */}
-          {error && (
-            <div className="alert alert-error shadow-lg mb-6">
-              <div>
-                <i className="fas fa-exclamation-circle text-error"></i>
-                <span>{error}</span>
-              </div>
-            </div>
-          )}
           
           <div className="card bg-white shadow-md mb-6">
             <div className="card-body">

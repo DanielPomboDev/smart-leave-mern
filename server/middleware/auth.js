@@ -15,6 +15,7 @@ const protect = async (req, res, next) => {
       console.log('Token decoded:', decoded);
 
       // Get user from token and populate department
+      // The decoded.id corresponds to user_id in the token payload
       req.user = await User.findOne({ user_id: decoded.id })
         .populate('department_id', 'name')
         .select('-password');
