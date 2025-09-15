@@ -56,6 +56,10 @@ app.use('/api/hr', hrRoutes);
 const hrEmployeesRoutes = require('./routes/hrEmployees');
 app.use('/api/hr/employees', hrEmployeesRoutes);
 
+// Leave Records routes
+const leaveRecordsRoutes = require('./routes/leaveRecords');
+app.use('/api/leave-records', leaveRecordsRoutes);
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -4,7 +4,8 @@ const {
   getHRDepartments,
   getHRLeaveRequests, 
   getHRLeaveRequest, 
-  processHRLeaveApproval 
+  processHRLeaveApproval,
+  getHRLeaveRecords
 } = require('../controllers/HRController');
 const { protect } = require('../middleware/auth');
 
@@ -27,5 +28,8 @@ router.get('/leave-requests/:id', getHRLeaveRequest);
 
 // Process HR leave approval
 router.post('/leave-requests/:id/approve', processHRLeaveApproval);
+
+// Get leave records for HR
+router.get('/leave-records', getHRLeaveRecords);
 
 module.exports = router;

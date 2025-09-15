@@ -14,6 +14,8 @@ import HRDashboard from './components/HRDashboard';
 import HRLeaveRequests from './components/HRLeaveRequests';
 import HRLeaveRequestDetails from './components/HRLeaveRequestDetails';
 import HREmployees from './components/HREmployees';
+import HRLeaveRecord from './components/HRLeaveRecord';
+import HRLeaveRecords from './components/HRLeaveRecords';
 import './App.css';
 
 function App() {
@@ -36,6 +38,8 @@ function App() {
           <Route path="/hr/employees" element={<HREmployees />} />
           <Route path="/hr/leave-requests" element={<HRLeaveRequests />} />
           <Route path="/hr/leave-request/:id" element={<HRLeaveRequestDetails />} />
+          <Route path="/hr/leave-records" element={<HRLeaveRecords />} />
+          <Route path="/hr/leave-record/:id" element={<HRLeaveRecord />} />
         </Routes>
       </div>
     </Router>

@@ -3,6 +3,7 @@ const LeaveRequest = require('../models/LeaveRequest');
 const Department = require('../models/Department');
 const LeaveRecommendation = require('../models/LeaveRecommendation');
 const LeaveApproval = require('../models/LeaveApproval');
+const LeaveRecord = require('../models/LeaveRecord');
 
 // @desc    Get HR dashboard statistics
 // @route   GET /api/hr/dashboard
@@ -385,10 +386,73 @@ const processHRLeaveApproval = async (req, res) => {
   }
 };
 
+// @desc    Get leave records with filtering for HR
+// @route   GET /api/hr/leave-records
+// @access  Private (HR only)
+const getHRLeaveRecords = async (req, res) => {
+  try {
+    // req.user is set by the auth middleware
+    if (!req.user || req.user.user_type !== 'hr') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HR access required.'
+      });
+    }
+
+    const { department, search, page = 1, limit = 10 } = req.query;
+    
+    // Build query
+    let query = User.find();
+    
+    // Apply department filter
+    if (department && department !== 'all') {
+      query = query.where('department_id', department);
+    }
+    
+    // Apply search filter
+    if (search) {
+      query = query.or([
+        { first_name: { $regex: search, $options: 'i' } },
+        { last_name: { $regex: search, $options: 'i' } },
+        { user_id: { $regex: search, $options: 'i' } }
+      ]);
+    }
+    
+    // Populate department and paginate
+    const users = await query
+      .populate('department_id')
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .exec();
+    
+    // Get total count for pagination
+    const total = await User.countDocuments(query.getQuery());
+    
+    // Also get all departments for the filter dropdown
+    const departments = await Department.find();
+    
+    res.json({
+      success: true,
+      users,
+      departments,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+      total
+    });
+  } catch (error) {
+    console.error('Error fetching HR leave records:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching leave records: ' + error.message
+    });
+  }
+};
+
 module.exports = {
   getHRDashboardStats,
   getHRDepartments,
   getHRLeaveRequests,
   getHRLeaveRequest,
-  processHRLeaveApproval
+  processHRLeaveApproval,
+  getHRLeaveRecords
 };

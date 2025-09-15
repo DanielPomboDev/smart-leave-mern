@@ -450,6 +450,12 @@ const HREmployees = () => {
                               Edit
                             </button>
                             <button 
+                              className="btn btn-sm btn-secondary"
+                              onClick={() => window.location.href = `/hr/leave-record/${employee.user_id}`}
+                            >
+                              View Record
+                            </button>
+                            <button 
                               className="btn btn-sm btn-error"
                               onClick={() => confirmDeleteEmployee(employee)}
                             >

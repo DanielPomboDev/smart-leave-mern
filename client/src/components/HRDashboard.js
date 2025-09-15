@@ -107,7 +107,7 @@ const HRDashboard = () => {
 
   return (
     <Layout title="HR Dashboard">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
         {/* Pending Requests Card */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
@@ -165,6 +165,24 @@ const HRDashboard = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             </div>
+          </div>
+        </div>
+        
+        {/* Leave Records Card */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-indigo-600">Leave Records</p>
+              <h3 className="text-3xl font-bold text-gray-800 mt-1">
+                <i className="fas fa-file-alt text-indigo-500"></i>
+              </h3>
+            </div>
+            <button 
+              onClick={() => navigate('/hr/leave-records')}
+              className="btn btn-primary btn-sm"
+            >
+              View Records
+            </button>
           </div>
         </div>
       </div>
