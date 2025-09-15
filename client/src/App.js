@@ -13,6 +13,7 @@ import LeaveRequestDetails from './components/LeaveRequestDetails';
 import HRDashboard from './components/HRDashboard';
 import HRLeaveRequests from './components/HRLeaveRequests';
 import HRLeaveRequestDetails from './components/HRLeaveRequestDetails';
+import HREmployees from './components/HREmployees';
 import './App.css';
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
           <Route path="/employee/settings" element={<Settings />} />
           <Route path="/employee/leave-request/:id" element={<LeaveRequestDetails />} />
           <Route path="/hr/dashboard" element={<HRDashboard />} />
+          <Route path="/hr/employees" element={<HREmployees />} />
           <Route path="/hr/leave-requests" element={<HRLeaveRequests />} />
           <Route path="/hr/leave-request/:id" element={<HRLeaveRequestDetails />} />
         </Routes>

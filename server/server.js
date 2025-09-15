@@ -52,6 +52,10 @@ app.use('/api/settings', settingsRoutes);
 const hrRoutes = require('./routes/hr');
 app.use('/api/hr', hrRoutes);
 
+// HR Employees routes
+const hrEmployeesRoutes = require('./routes/hrEmployees');
+app.use('/api/hr/employees', hrEmployeesRoutes);
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

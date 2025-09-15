@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 const userSchema = new mongoose.Schema({
   user_id: {
@@ -63,5 +64,8 @@ userSchema.pre(/^find/, function(next) {
   this.populate('department_id');
   next();
 });
+
+// Add pagination plugin
+userSchema.plugin(mongoosePaginate);
 
 module.exports = mongoose.model('User', userSchema);
