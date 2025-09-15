@@ -230,19 +230,6 @@ const DepartmentLeaveRequestDetails = () => {
             Department Leave Recommendation Process
           </h2>
 
-          {isProcessed && (
-            <div className="alert alert-info mb-6">
-              <div className="flex items-center">
-                <i className="fas fa-info-circle text-xl mr-2"></i>
-                <span>
-                  {leaveRequest.status === 'cancelled'
-                    ? 'This request has been cancelled by the employee and cannot be processed further.'
-                    : `This request is already ${getStatusText(leaveRequest.status)}. You can view details but cannot submit another recommendation.`}
-                </span>
-              </div>
-            </div>
-          )}
-
           {/* Step Indicator */}
           <div className="w-full py-4">
             <ul className="steps steps-horizontal w-full">

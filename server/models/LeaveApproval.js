@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const leaveApprovalSchema = new mongoose.Schema({
+  approval_id: {
+    type: String,
+    default: () => new mongoose.Types.ObjectId().toString(),
+    unique: true,
+    required: true
+  },
   hr_manager_id: {
     type: String,
     ref: 'User'

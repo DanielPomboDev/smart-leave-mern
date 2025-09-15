@@ -245,7 +245,7 @@ const HRDashboard = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
-                          onClick={() => navigate(`/employee/leave-request/${leaveRequest._id}`)}
+                          onClick={() => navigate(`/hr/leave-request/${leaveRequest._id}`)}
                           className="btn btn-xs btn-primary"
                         >
                           View

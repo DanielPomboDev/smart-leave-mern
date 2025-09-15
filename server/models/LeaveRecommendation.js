@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const leaveRecommendationSchema = new mongoose.Schema({
+  recommendation_id: {
+    type: String,
+    default: () => new mongoose.Types.ObjectId().toString(),
+    unique: true,
+    required: true
+  },
   department_admin_id: {
     type: String,
     required: true,
@@ -22,5 +28,8 @@ const leaveRecommendationSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Remove any existing indexes that might be causing conflicts
+leaveRecommendationSchema.index({ leave_id: 1, department_admin_id: 1 }, { unique: true });
 
 module.exports = mongoose.model('LeaveRecommendation', leaveRecommendationSchema);

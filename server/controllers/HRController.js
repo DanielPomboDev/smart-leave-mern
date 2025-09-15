@@ -52,14 +52,6 @@ const getHRDashboardStats = async (req, res) => {
     const hrQueue = await LeaveRequest.find({
       status: { $in: ['recommended', 'hr_approved', 'approved', 'cancelled'] }
     })
-    .populate({
-      path: 'user_id',
-      select: 'first_name last_name position',
-      populate: {
-        path: 'department_id',
-        select: 'name'
-      }
-    })
     .sort({ createdAt: -1 })
     .limit(10);
 
@@ -202,7 +194,7 @@ const getHRLeaveRequests = async (req, res) => {
     const leaveRequests = await LeaveRequest.find(conditions)
       .populate({
         path: 'user_id',
-        select: 'first_name last_name department_id position user_id',
+        select: 'first_name last_name middle_initial department_id position user_id',
         populate: {
           path: 'department_id',
           select: 'name'
@@ -229,7 +221,12 @@ const getHRLeaveRequests = async (req, res) => {
 const getHRLeaveRequest = async (req, res) => {
   try {
     // req.user is set by the auth middleware
+    console.log('HR Leave Request - User:', req.user);
     if (!req.user || req.user.user_type !== 'hr') {
+      console.log('HR Leave Request - Unauthorized access attempt:', {
+        user: req.user,
+        userType: req.user?.user_type
+      });
       return res.status(403).json({
         success: false,
         message: 'Access denied. HR access required.'
@@ -239,15 +236,14 @@ const getHRLeaveRequest = async (req, res) => {
     const { id } = req.params;
 
     // Get the leave request with user and department information
-    const leaveRequest = await LeaveRequest.findById(id)
-      .populate({
-        path: 'user_id',
-        select: 'first_name last_name department_id position user_id',
-        populate: {
-          path: 'department_id',
-          select: 'name'
-        }
-      });
+    const leaveRequest = await LeaveRequest.findById(id).populate({
+      path: 'user_id',
+      select: 'first_name last_name middle_initial department_id position user_id',
+      populate: {
+        path: 'department_id',
+        select: 'name'
+      }
+    });
 
     if (!leaveRequest) {
       return res.status(404).json({
@@ -260,8 +256,14 @@ const getHRLeaveRequest = async (req, res) => {
     const recommendations = await LeaveRecommendation.find({ leave_id: id })
       .populate({
         path: 'department_admin_id',
-        select: 'first_name last_name'
+        select: 'first_name last_name',
+        foreignField: 'user_id',  // Match User's user_id field instead of _id
+        localField: 'department_admin_id'  // Use LeaveRecommendation's department_admin_id field
       });
+
+    // Attach recommendations to the leave request object
+    const leaveRequestWithRecommendations = leaveRequest.toObject();
+    leaveRequestWithRecommendations.recommendations = recommendations;
 
     // Check if employee had sufficient leave credits when submitting the request
     // This is a simplified version - in a real app, you would check against actual leave records
@@ -269,8 +271,7 @@ const getHRLeaveRequest = async (req, res) => {
 
     res.json({
       success: true,
-      leaveRequest,
-      recommendations,
+      leaveRequest: leaveRequestWithRecommendations,
       hasSufficientCredits
     });
   } catch (error) {
@@ -315,6 +316,19 @@ const processHRLeaveApproval = async (req, res) => {
       });
     }
 
+    // Check if an approval already exists for this leave request and HR manager
+    const existingApproval = await LeaveApproval.findOne({
+      leave_id: id,
+      hr_manager_id: req.user.user_id
+    });
+    
+    if (existingApproval) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already submitted an approval for this leave request.'
+      });
+    }
+
     // Validate the request
     if (!approval || !['approve', 'disapprove'].includes(approval)) {
       return res.status(400).json({
@@ -355,9 +369,18 @@ const processHRLeaveApproval = async (req, res) => {
     });
   } catch (error) {
     console.error('Error processing HR leave approval:', error);
+    
+    // Handle duplicate key error specifically
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'This leave request has already been approved by HR. Please refresh the page to see the updated status.'
+      });
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Server error while processing leave approval'
+      message: 'Server error while processing leave approval: ' + error.message
     });
   }
 };

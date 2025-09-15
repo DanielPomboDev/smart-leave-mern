@@ -325,6 +325,19 @@ const recommendLeaveRequest = async (req, res) => {
       });
     }
     
+    // Check if a recommendation already exists for this leave request and department admin
+    const existingRecommendation = await LeaveRecommendation.findOne({
+      leave_id: leaveRequestId,
+      department_admin_id: req.user.user_id
+    });
+    
+    if (existingRecommendation) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already submitted a recommendation for this leave request.'
+      });
+    }
+    
     // Create a leave recommendation record
     const recommendationRecord = new LeaveRecommendation({
       department_admin_id: req.user.user_id,
@@ -350,6 +363,15 @@ const recommendLeaveRequest = async (req, res) => {
     });
   } catch (error) {
     console.error('Error processing department leave recommendation:', error);
+    
+    // Handle duplicate key error specifically
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'This leave request has already been recommended by your department. Please refresh the page to see the updated status.'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Server error while processing leave recommendation: ' + error.message

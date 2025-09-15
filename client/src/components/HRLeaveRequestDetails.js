@@ -15,6 +15,9 @@ const HRLeaveRequestDetails = () => {
   });
   const [currentStep, setCurrentStep] = useState(1);
   const [hasSufficientCredits, setHasSufficientCredits] = useState(true);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [processing, setProcessing] = useState(false);
   
   const navigate = useNavigate();
   const { id } = useParams();
@@ -34,6 +37,8 @@ const HRLeaveRequestDetails = () => {
         if (response.data.success) {
           setLeaveRequest(response.data.leaveRequest);
           setHasSufficientCredits(response.data.hasSufficientCredits);
+        } else {
+          setError(response.data.message || 'Failed to load leave request details');
         }
       } catch (error) {
         console.error('Error fetching leave request:', error);
@@ -69,6 +74,13 @@ const HRLeaveRequestDetails = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setShowConfirmModal(true);
+  };
+
+  const submitApproval = async () => {
+    setShowConfirmModal(false);
+    setProcessing(true);
+    setError('');
     
     try {
       const token = localStorage.getItem('token');
@@ -80,14 +92,36 @@ const HRLeaveRequestDetails = () => {
       });
 
       if (response.data.success) {
-        navigate('/hr/leave-requests', { 
-          state: { message: 'Leave request has been processed successfully.' } 
-        });
+        setShowSuccessModal(true);
+      } else {
+        setError(response.data.message || 'Failed to process leave request. Please try again.');
       }
     } catch (error) {
       console.error('Error processing leave request:', error);
-      setError('Failed to process leave request: ' + (error.response?.data?.message || error.message));
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        setError(error.response.data.message || `Error: ${error.response.status} - ${error.response.statusText}`);
+      } else if (error.request) {
+        // The request was made but no response was received
+        setError('Network error. Please check your connection and try again.');
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        setError('An unexpected error occurred. Please try again.');
+      }
+    } finally {
+      setProcessing(false);
     }
+  };
+
+  const closeSuccessModal = () => {
+    setShowSuccessModal(false);
+    // Navigate back to HR dashboard after a short delay
+    setTimeout(() => {
+      navigate('/hr/leave-requests', { 
+        state: { message: 'Leave request has been processed successfully.' } 
+      });
+    }, 1000);
   };
 
   const getStatusText = (status) => {
@@ -566,8 +600,16 @@ const HRLeaveRequestDetails = () => {
                         <button 
                           type="submit" 
                           className="btn bg-blue-500 hover:bg-blue-600 text-white"
+                          disabled={processing}
                         >
-                          Submit
+                          {processing ? (
+                            <>
+                              <span className="loading loading-spinner loading-sm"></span>
+                              Processing...
+                            </>
+                          ) : (
+                            'Submit'
+                          )}
                         </button>
                       ) : (
                         <button type="button" className="btn" disabled>
@@ -585,6 +627,67 @@ const HRLeaveRequestDetails = () => {
           </form>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowConfirmModal(false)}></div>
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-w-md z-10">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                <i className="fas fa-question-circle text-blue-600 text-2xl"></i>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Confirm Approval</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to {approvalData.approval} this leave request? This action cannot be undone.
+              </p>
+              <div className="flex justify-center space-x-3">
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium rounded-md"
+                  onClick={() => setShowConfirmModal(false)}
+                  disabled={processing}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md"
+                  onClick={submitApproval}
+                  disabled={processing}
+                >
+                  {processing ? 'Processing...' : 'Confirm'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-w-md z-10">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                <i className="fas fa-check-circle text-green-600 text-2xl"></i>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Approval Submitted</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Your approval has been submitted successfully.
+              </p>
+              <button
+                type="button"
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md"
+                onClick={closeSuccessModal}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
