@@ -8,8 +8,8 @@ axios.defaults.baseURL = 'http://localhost:5000';
 const Login = () => {
   const [formData, setFormData] = useState({
     employee_id: '',
-    password: '',
-    is_standard_employee: false
+    password: ''
+    // is_standard_employee: false
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -17,7 +17,8 @@ const Login = () => {
 
   const navigate = useNavigate();
 
-  const { employee_id, password, is_standard_employee } = formData;
+  const { employee_id, password } = formData;
+  // const { employee_id, password, is_standard_employee } = formData;
 
   const onChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -29,9 +30,9 @@ const Login = () => {
     }
   };
 
-  const onCheckboxChange = (e) => {
-    setFormData({ ...formData, is_standard_employee: e.target.checked });
-  };
+  // const onCheckboxChange = (e) => {
+  //   setFormData({ ...formData, is_standard_employee: e.target.checked });
+  // };
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -39,9 +40,15 @@ const Login = () => {
     setError('');
     setInvalidField('');
 
+    // Remove is_standard_employee from the data being sent
+    const loginData = {
+      employee_id,
+      password
+    };
+
     try {
-      console.log('Sending login request with data:', formData);
-      const res = await axios.post('/api/auth/login', formData);
+      console.log('Sending login request with data:', loginData);
+      const res = await axios.post('/api/auth/login', loginData);
       console.log('Received response:', res.data);
       
       if (res.data.success) {
@@ -155,7 +162,7 @@ const Login = () => {
               />
             </div>
 
-            <div className="form-control">
+            {/* <div className="form-control">
               <label className="label cursor-pointer">
                 <input 
                   type="checkbox" 
@@ -166,7 +173,7 @@ const Login = () => {
                 />
                 <span className="label-text ml-2">Login as standard employee (restrict access to employee pages only)</span>
               </label>
-            </div>
+            </div> */}
 
             <button 
               type="submit" 

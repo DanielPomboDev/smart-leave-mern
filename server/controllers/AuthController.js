@@ -26,7 +26,7 @@ const showLogin = async (req, res) => {
 // @access  Public
 const login = async (req, res) => {
   try {
-    const { employee_id, password, is_standard_employee } = req.body;
+    const { employee_id, password } = req.body;
 
     // Validate input
     if (!employee_id || !password) {
@@ -63,20 +63,18 @@ const login = async (req, res) => {
     // Determine redirect URL based on user type
     let redirectUrl = '/employee/dashboard';
     
-    if (!is_standard_employee) {
-      switch (user.user_type) {
-        case 'hr':
-          redirectUrl = '/hr/dashboard';
-          break;
-        case 'department_admin':
-          redirectUrl = '/department/dashboard';
-          break;
-        case 'mayor':
-          redirectUrl = '/mayor/dashboard';
-          break;
-        default:
-          redirectUrl = '/employee/dashboard';
-      }
+    switch (user.user_type) {
+      case 'hr':
+        redirectUrl = '/hr/dashboard';
+        break;
+      case 'department_admin':
+        redirectUrl = '/department/dashboard';
+        break;
+      case 'mayor':
+        redirectUrl = '/mayor/dashboard';
+        break;
+      default:
+        redirectUrl = '/employee/dashboard';
     }
 
     res.json({
