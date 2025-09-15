@@ -36,11 +36,20 @@ const login = async (req, res) => {
       });
     }
 
+    // Trim whitespace from employee_id
+    const trimmedEmployeeId = employee_id.trim();
+    console.log('Original employee_id:', employee_id);
+    console.log('Trimmed employee_id:', trimmedEmployeeId);
+
     // Find user by employee ID and populate department
-    const user = await User.findOne({ user_id: employee_id })
+    console.log('Searching for user with employee_id:', trimmedEmployeeId);
+    const user = await User.findOne({ user_id: trimmedEmployeeId })
       .populate('department_id', 'name');
     
+    console.log('User lookup result:', user);
+    
     if (!user) {
+      console.log('User not found in database');
       return res.status(401).json({ 
         success: false, 
         message: 'The employee ID does not exist in our system.' 
@@ -48,9 +57,12 @@ const login = async (req, res) => {
     }
 
     // Check password
+    console.log('Comparing passwords...');
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log('Password match result:', isMatch);
     
     if (!isMatch) {
+      console.log('Password incorrect for user:', user.user_id);
       return res.status(401).json({ 
         success: false, 
         message: 'The password is incorrect.' 
