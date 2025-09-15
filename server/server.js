@@ -60,6 +60,10 @@ app.use('/api/hr/employees', hrEmployeesRoutes);
 const leaveRecordsRoutes = require('./routes/leaveRecords');
 app.use('/api/leave-records', leaveRecordsRoutes);
 
+// Mayor routes
+const mayorRoutes = require('./routes/mayor');
+app.use('/api/mayor', mayorRoutes);
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

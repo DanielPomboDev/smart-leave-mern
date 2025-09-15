@@ -16,6 +16,9 @@ import HRLeaveRequestDetails from './components/HRLeaveRequestDetails';
 import HREmployees from './components/HREmployees';
 import HRLeaveRecord from './components/HRLeaveRecord';
 import HRLeaveRecords from './components/HRLeaveRecords';
+import MayorDashboard from './components/MayorDashboard';
+import MayorLeaveRequests from './components/MayorLeaveRequests';
+import MayorLeaveRequestDetails from './components/MayorLeaveRequestDetails';
 import './App.css';
 
 function App() {
@@ -40,6 +43,9 @@ function App() {
           <Route path="/hr/leave-request/:id" element={<HRLeaveRequestDetails />} />
           <Route path="/hr/leave-records" element={<HRLeaveRecords />} />
           <Route path="/hr/leave-record/:id" element={<HRLeaveRecord />} />
+          <Route path="/mayor/dashboard" element={<MayorDashboard />} />
+          <Route path="/mayor/leave-requests" element={<MayorLeaveRequests />} />
+          <Route path="/mayor/leave-requests/:id" element={<MayorLeaveRequestDetails />} />
         </Routes>
       </div>
     </Router>

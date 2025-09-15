@@ -8,9 +8,11 @@ const protect = async (req, res, next) => {
     try {
       // Get token from header
       token = req.headers.authorization.split(' ')[1];
+      console.log('Token found in header:', token);
 
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'smartleave_secret');
+      console.log('Token decoded:', decoded);
 
       // Get user from token and populate department
       req.user = await User.findOne({ user_id: decoded.id })
@@ -20,6 +22,7 @@ const protect = async (req, res, next) => {
       console.log('Authenticated user:', JSON.stringify(req.user, null, 2));
 
       if (!req.user) {
+        console.log('User not found for decoded ID:', decoded.id);
         return res.status(401).json({
           success: false,
           message: 'Not authorized, user not found'
@@ -37,6 +40,7 @@ const protect = async (req, res, next) => {
   }
 
   if (!token) {
+    console.log('No token found in request headers');
     return res.status(401).json({
       success: false,
       message: 'Not authorized, no token'
