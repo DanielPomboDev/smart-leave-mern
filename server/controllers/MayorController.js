@@ -2,6 +2,8 @@ const LeaveRequest = require('../models/LeaveRequest');
 const User = require('../models/User');
 const LeaveRecommendation = require('../models/LeaveRecommendation');
 const LeaveApproval = require('../models/LeaveApproval');
+const { sendLeaveStatusUpdateToEmployee } = require('../utils/notificationUtils');
+const { NOTIFICATION_TYPES } = require('../utils/notificationUtils');
 
 class MayorController {
   // Get dashboard statistics
@@ -189,8 +191,87 @@ class MayorController {
       // Update status based on mayor's decision
       leaveRequest.status = decision === 'approve' ? 'approved' : 'disapproved';
       await leaveRequest.save();
-
-      // TODO: Implement notification system to inform the employee and other involved parties
+      
+      // Send notifications
+      try {
+        // Populate user data for the notification
+        const populatedLeaveRequest = await LeaveRequest.findById(req.params.id)
+          .populate({
+            path: 'user_id',
+            select: 'first_name last_name email user_id department_id',
+            foreignField: 'user_id',
+            localField: 'user_id'
+          });
+        
+        if (decision === 'approve') {
+          // Send notification to employee
+          await sendLeaveStatusUpdateToEmployee(populatedLeaveRequest, NOTIFICATION_TYPES.LEAVE_MAYOR_APPROVED);
+          
+          // Send notification to department admin and HR
+          const departmentAdmin = await User.findOne({ 
+            user_type: 'department_admin', 
+            department_id: populatedLeaveRequest.user_id.department_id 
+          });
+          
+          if (departmentAdmin) {
+            await sendLeaveStatusUpdateToEmployee(
+              populatedLeaveRequest, 
+              NOTIFICATION_TYPES.LEAVE_MAYOR_APPROVED,
+              '',
+              departmentAdmin._id,
+              'department_admin'
+            );
+          }
+          
+          const hrUsers = await User.find({ user_type: 'hr' });
+          for (const hrUser of hrUsers) {
+            await sendLeaveStatusUpdateToEmployee(
+              populatedLeaveRequest, 
+              NOTIFICATION_TYPES.LEAVE_MAYOR_APPROVED,
+              '',
+              hrUser._id,
+              'hr'
+            );
+          }
+        } else {
+          // Send notification to employee about Mayor disapproval
+          await sendLeaveStatusUpdateToEmployee(
+            populatedLeaveRequest, 
+            NOTIFICATION_TYPES.LEAVE_MAYOR_DISAPPROVED,
+            ''
+          );
+          
+          // Send notification to department admin and HR
+          const departmentAdmin = await User.findOne({ 
+            user_type: 'department_admin', 
+            department_id: populatedLeaveRequest.user_id.department_id 
+          });
+          
+          if (departmentAdmin) {
+            await sendLeaveStatusUpdateToEmployee(
+              populatedLeaveRequest, 
+              NOTIFICATION_TYPES.LEAVE_MAYOR_DISAPPROVED,
+              '',
+              departmentAdmin._id,
+              'department_admin'
+            );
+          }
+          
+          const hrUsers = await User.find({ user_type: 'hr' });
+          for (const hrUser of hrUsers) {
+            await sendLeaveStatusUpdateToEmployee(
+              populatedLeaveRequest, 
+              NOTIFICATION_TYPES.LEAVE_MAYOR_DISAPPROVED,
+              '',
+              hrUser._id,
+              'hr'
+            );
+          }
+        }
+      } catch (notificationError) {
+        console.error('Error sending notification:', notificationError);
+        // Don't fail the request if notification fails
+      }
 
       res.json({ message: 'Final decision recorded successfully', leaveRequest });
     } catch (error) {

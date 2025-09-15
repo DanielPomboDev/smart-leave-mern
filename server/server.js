@@ -64,6 +64,10 @@ app.use('/api/leave-records', leaveRecordsRoutes);
 const mayorRoutes = require('./routes/mayor');
 app.use('/api/mayor', mayorRoutes);
 
+// Notification routes
+const notificationRoutes = require('./routes/notifications');
+app.use('/api/notifications', notificationRoutes);
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

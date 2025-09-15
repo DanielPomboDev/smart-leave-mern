@@ -4,6 +4,8 @@ const Department = require('../models/Department');
 const LeaveRecommendation = require('../models/LeaveRecommendation');
 const LeaveApproval = require('../models/LeaveApproval');
 const LeaveRecord = require('../models/LeaveRecord');
+const { sendHrApprovedLeaveRequestNotification, sendLeaveStatusUpdateToEmployee } = require('../utils/notificationUtils');
+const { NOTIFICATION_TYPES } = require('../utils/notificationUtils');
 
 // @desc    Get HR dashboard statistics
 // @route   GET /api/hr/dashboard
@@ -363,6 +365,34 @@ const processHRLeaveApproval = async (req, res) => {
     leaveRequest.hr_approved_at = new Date();
 
     await leaveRequest.save();
+    
+    // Send notifications
+    try {
+      // Populate user data for the notification
+      const populatedLeaveRequest = await LeaveRequest.findById(id)
+        .populate('user_id', 'first_name last_name');
+      
+      if (approval === 'approve') {
+        // Send notification to Mayor
+        const mayorUsers = await User.find({ user_type: 'mayor' });
+        for (const mayorUser of mayorUsers) {
+          await sendHrApprovedLeaveRequestNotification(populatedLeaveRequest, mayorUser._id);
+        }
+        
+        // Send notification to employee
+        await sendLeaveStatusUpdateToEmployee(populatedLeaveRequest, NOTIFICATION_TYPES.LEAVE_HR_APPROVED);
+      } else {
+        // Send notification to employee about HR disapproval
+        await sendLeaveStatusUpdateToEmployee(
+          populatedLeaveRequest, 
+          NOTIFICATION_TYPES.LEAVE_HR_DISAPPROVED,
+          disapproved_due_to
+        );
+      }
+    } catch (notificationError) {
+      console.error('Error sending notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
 
     res.json({
       success: true,

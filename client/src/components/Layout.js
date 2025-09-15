@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import NotificationDropdown from './NotificationDropdown';
 
 const Layout = ({ children, title = "Dashboard" }) => {
   const navigate = useNavigate();
@@ -152,12 +153,7 @@ const Layout = ({ children, title = "Dashboard" }) => {
             <h1 className="text-2xl font-semibold text-gray-800">{title}</h1>
 
             <div className="flex items-center space-x-4">
-              <div className="relative">
-                <button className="text-gray-600 hover:text-blue-500 focus:outline-none" type="button">
-                  <i className="fas fa-bell text-xl"></i>
-                  <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full hidden"></span>
-                </button>
-              </div>
+              <NotificationDropdown userId={user._id} userType={user.user_type} />
 
               <div className="flex flex-col items-end">
                 <span className="text-sm font-bold text-gray-600">

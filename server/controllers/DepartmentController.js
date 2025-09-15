@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const LeaveRequest = require('../models/LeaveRequest');
 const LeaveRecommendation = require('../models/LeaveRecommendation');
+const { sendRecommendedLeaveRequestNotification, sendLeaveStatusUpdateToEmployee } = require('../utils/notificationUtils');
+const { NOTIFICATION_TYPES } = require('../utils/notificationUtils');
 
 // @desc    Get department dashboard statistics
 // @route   GET /api/department/dashboard
@@ -357,6 +359,34 @@ const recommendLeaveRequest = async (req, res) => {
     
     await leaveRequest.save();
     
+    // Send notifications
+    try {
+      // Populate user data for the notification
+      const populatedLeaveRequest = await LeaveRequest.findById(leaveRequestId)
+        .populate('user_id', 'first_name last_name');
+      
+      if (recommendation === 'approve') {
+        // Send notification to HR
+        const hrUsers = await User.find({ user_type: 'hr' });
+        for (const hrUser of hrUsers) {
+          await sendRecommendedLeaveRequestNotification(populatedLeaveRequest, hrUser._id);
+        }
+        
+        // Send notification to employee
+        await sendLeaveStatusUpdateToEmployee(populatedLeaveRequest, NOTIFICATION_TYPES.LEAVE_RECOMMENDED);
+      } else {
+        // Send notification to employee about disapproval
+        await sendLeaveStatusUpdateToEmployee(
+          populatedLeaveRequest, 
+          NOTIFICATION_TYPES.LEAVE_DEPARTMENT_DISAPPROVED,
+          disapproval_reason
+        );
+      }
+    } catch (notificationError) {
+      console.error('Error sending notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
+
     res.json({
       success: true,
       message: `Leave request has been ${recommendation}d by department.`

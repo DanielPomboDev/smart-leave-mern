@@ -1,4 +1,6 @@
 const LeaveRequest = require('../models/LeaveRequest');
+const { sendNewLeaveRequestNotification } = require('../utils/notificationUtils');
+const User = require('../models/User');
 
 // @desc    Create a new leave request
 // @route   POST /api/leave-requests
@@ -46,6 +48,42 @@ const createLeaveRequest = async (req, res) => {
     });
 
     const savedLeaveRequest = await leaveRequest.save();
+
+    // Send notification to department admin
+    try {
+      // Get the user's department
+      const user = await User.findOne({ user_id: req.user.user_id });
+      if (user && user.department_id) {
+        // Find department admin for this department
+        const departmentAdmin = await User.findOne({ 
+          user_type: 'department_admin', 
+          department_id: user.department_id 
+        });
+        
+        if (departmentAdmin) {
+          // Populate user data for the notification
+          const populatedLeaveRequest = await LeaveRequest.findById(savedLeaveRequest._id)
+            .populate({
+              path: 'user_id',
+              select: 'first_name last_name middle_initial department_id position user_id',
+              foreignField: 'user_id',
+              localField: 'user_id',
+              populate: {
+                path: 'department_id',
+                select: 'name'
+              }
+            });
+            
+          // Make sure user data is available before sending notification
+          if (populatedLeaveRequest && populatedLeaveRequest.user_id) {
+            await sendNewLeaveRequestNotification(populatedLeaveRequest, departmentAdmin._id);
+          }
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
 
     res.status(201).json({
       success: true,

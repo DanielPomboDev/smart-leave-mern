@@ -74,29 +74,29 @@ const EmployeeDashboard = () => {
   const [errorMessage, setErrorMessage] = useState('');
 
   // Fetch recent leave requests
-  useEffect(() => {
-    const fetchRecentLeaveRequests = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get('http://localhost:5000/api/leave-requests', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.data.success) {
-          // Limit to 5 most recent requests
-          const recentRequests = response.data.data.slice(0, 5);
-          setRecentLeaveRequests(recentRequests);
+  const fetchRecentLeaveRequests = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5000/api/leave-requests', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      } catch (error) {
-        console.error('Error fetching recent leave requests:', error);
-      } finally {
-        setLoadingRequests(false);
-      }
-    };
+      });
 
+      if (response.data.success) {
+        // Limit to 5 most recent requests
+        const recentRequests = response.data.data.slice(0, 5);
+        setRecentLeaveRequests(recentRequests);
+      }
+    } catch (error) {
+      console.error('Error fetching recent leave requests:', error);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  useEffect(() => {
     fetchRecentLeaveRequests();
   }, []);
 
@@ -417,6 +417,9 @@ const EmployeeDashboard = () => {
       if (response.data.success) {
         // Show success modal
         setShowSuccessModal(true);
+        
+        // Refresh recent leave requests to include the new one
+        await fetchRecentLeaveRequests();
         
         // Reset form after a delay
         setTimeout(() => {
