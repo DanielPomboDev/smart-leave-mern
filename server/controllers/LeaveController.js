@@ -32,6 +32,7 @@ const createLeaveRequest = async (req, res) => {
     const hasSufficientCredits = await hasSufficientLeaveCredits(req.user.user_id, leave_type, numberOfDaysFloat);
     
     let isWithoutPay = false;
+    let availableCredits = 0; // Declare availableCredits outside the if block
     if (!hasSufficientCredits) {
       // Get the latest leave record for this user to determine their current balance
       const LeaveRecord = require('../models/LeaveRecord');
@@ -41,7 +42,6 @@ const createLeaveRequest = async (req, res) => {
         .exec();
       
       // If no record exists, use default values
-      let availableCredits = 0;
       if (!latestLeaveRecord) {
         availableCredits = leave_type === 'vacation' ? 15 : 12; // Default balances
       } else {

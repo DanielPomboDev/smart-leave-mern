@@ -363,7 +363,14 @@ const HRLeaveRecord = () => {
                           </div>
                           <div>
                             <p className="font-medium text-gray-800">Vacation Leave</p>
-                            <p className="text-sm text-gray-600">{vacation.days} days</p>
+                            <p className="text-sm text-gray-600">
+                              {vacation.days} days
+                              {vacation.paid === false && (
+                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                  Without Pay
+                                </span>
+                              )}
+                            </p>
                           </div>
                         </div>
                         <div className="text-right">
@@ -380,11 +387,18 @@ const HRLeaveRecord = () => {
                           </div>
                           <div>
                             <p className="font-medium text-gray-800">Sick Leave</p>
-                            <p className="text-sm text-gray-600">{sick.days} days</p>
+                            <p className="text-sm text-gray-600">
+                              {sick.days} days
+                              {sick.paid === false && (
+                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                  Without Pay
+                                </span>
+                              )}
+                            </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-gray-500">For: {sick.date}</p>
+                          <p className="text-sm text-gray-500">For: {sick.start_date} - {sick.end_date}</p>
                         </div>
                       </div>
                     ))}

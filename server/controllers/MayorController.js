@@ -2,10 +2,129 @@ const LeaveRequest = require('../models/LeaveRequest');
 const User = require('../models/User');
 const LeaveRecommendation = require('../models/LeaveRecommendation');
 const LeaveApproval = require('../models/LeaveApproval');
+const LeaveRecord = require('../models/LeaveRecord');
 const { sendLeaveStatusUpdateToEmployee } = require('../utils/notificationUtils');
 const { NOTIFICATION_TYPES } = require('../utils/notificationUtils');
+const { hasSufficientLeaveCredits } = require('./LeaveRecordController');
 
 class MayorController {
+  /**
+   * Record an approved leave request in the appropriate month's leave record
+   * 
+   * @param {Object} leaveRequest - The leave request object
+   * @param {boolean} hasSufficientCredits - Whether the employee had sufficient credits
+   * @return {Promise<void>}
+   */
+  static async recordLeave(leaveRequest, hasSufficientCredits) {
+    try {
+      // Get the month and year when the leave will be taken (not current date)
+      const leaveDate = new Date(leaveRequest.start_date);
+      const leaveMonth = leaveDate.getMonth() + 1; // getMonth() is zero-based
+      const leaveYear = leaveDate.getFullYear();
+
+      // Get the most recent leave record for this user to determine their current balances
+      const latestLeaveRecord = await LeaveRecord.findOne({ user_id: leaveRequest.user_id })
+        .sort({ year: -1, month: -1 })
+        .exec();
+
+      // Calculate previous balances
+      const previousVacationBalance = latestLeaveRecord ? latestLeaveRecord.vacation_balance : 0;
+      const previousSickBalance = latestLeaveRecord ? latestLeaveRecord.sick_balance : 0;
+
+      // Check if a leave record already exists for the leave month
+      let leaveRecord = await LeaveRecord.findOne({
+        user_id: leaveRequest.user_id,
+        month: leaveMonth,
+        year: leaveYear
+      });
+
+      if (!leaveRecord) {
+        // Create a new leave record with initial values
+        // NOTE: Monthly credits are calculated at month end, not when individual leaves are approved
+        leaveRecord = new LeaveRecord({
+          user_id: leaveRequest.user_id,
+          month: leaveMonth,
+          year: leaveYear,
+          vacation_earned: 0, // Will be calculated at month end
+          sick_earned: 0, // Will be calculated at month end
+          vacation_used: 0,
+          sick_used: 0,
+          vacation_balance: previousVacationBalance,
+          sick_balance: previousSickBalance,
+          undertime_hours: 0,
+          lwop_days: 0,       // Days on leave without pay
+          vacation_entries: [],
+          sick_entries: []
+        });
+        await leaveRecord.save();
+      }
+
+      // Initialize vacation_entries and sick_entries as arrays if they are null
+      const vacationEntries = leaveRecord.vacation_entries || [];
+      const sickEntries = leaveRecord.sick_entries || [];
+
+      // Format the leave entry
+      const leaveEntry = {
+        start_date: new Date(leaveRequest.start_date).toISOString().split('T')[0],
+        end_date: new Date(leaveRequest.end_date).toISOString().split('T')[0],
+        days: leaveRequest.number_of_days,
+        type: leaveRequest.leave_type,
+        subtype: leaveRequest.subtype,
+        paid: !leaveRequest.without_pay // Add information about whether it was paid or not (opposite of without_pay)
+      };
+
+      // Store the current used values to calculate the actual deduction
+      const previousVacationUsed = leaveRecord.vacation_used;
+      const previousSickUsed = leaveRecord.sick_used;
+
+      // Record the leave (deduct credits only if it's a leave with pay AND it's for the current or past month)
+      const currentDate = new Date();
+      const isCurrentOrPastMonth = (leaveYear < currentDate.getFullYear()) || 
+                                 (leaveYear == currentDate.getFullYear() && leaveMonth <= (currentDate.getMonth() + 1));
+      
+      // Only deduct leave credits if this is a leave with pay (not without_pay)
+      const isLeaveWithPay = !leaveRequest.without_pay;
+      
+      if (leaveRequest.leave_type === 'vacation') {
+        // For future months, just record the entry without deducting leave
+        // For current/past months, deduct only for leave with pay
+        if (isLeaveWithPay && isCurrentOrPastMonth) {
+          leaveRecord.vacation_used += leaveRequest.number_of_days;
+          leaveRecord.vacation_balance -= leaveRequest.number_of_days;
+          
+          // Track LWOP days if this was originally without pay but we're recording it anyway
+          if (leaveRequest.without_pay) {
+            leaveRecord.lwop_days = (leaveRecord.lwop_days || 0) + leaveRequest.number_of_days;
+          }
+        }
+        vacationEntries.push(leaveEntry);
+      } else if (leaveRequest.leave_type === 'sick') {
+        // For future months, just record the entry without deducting leave
+        // For current/past months, deduct only for leave with pay
+        if (isLeaveWithPay && isCurrentOrPastMonth) {
+          leaveRecord.sick_used += leaveRequest.number_of_days;
+          leaveRecord.sick_balance -= leaveRequest.number_of_days;
+          
+          // Track LWOP days if this was originally without pay but we're recording it anyway
+          if (leaveRequest.without_pay) {
+            leaveRecord.lwop_days = (leaveRecord.lwop_days || 0) + leaveRequest.number_of_days;
+          }
+        }
+        sickEntries.push(leaveEntry);
+      }
+
+      // Update the entries arrays
+      leaveRecord.vacation_entries = vacationEntries;
+      leaveRecord.sick_entries = sickEntries;
+
+      // Save the updated leave record
+      await leaveRecord.save();
+    } catch (error) {
+      console.error('Error recording leave:', error);
+      throw error;
+    }
+  }
+
   // Get dashboard statistics
   static async getDashboardStats(req, res) {
     try {
@@ -188,9 +307,47 @@ class MayorController {
         return res.status(400).json({ message: 'Request not HR-approved yet.' });
       }
 
+      // Get the user_id before de-populating
+      const userId = leaveRequest.user_id.user_id;
+
+      // Store properties we need for recordLeave before de-populating
+      const leaveType = leaveRequest.leave_type;
+      const numberOfDays = leaveRequest.number_of_days;
+      const withoutPay = leaveRequest.without_pay;
+      const startDate = leaveRequest.start_date;
+      const endDate = leaveRequest.end_date;
+      const subtype = leaveRequest.subtype;
+
       // Update status based on mayor's decision
       leaveRequest.status = decision === 'approve' ? 'approved' : 'disapproved';
+
+      // De-populate user_id before saving to avoid validation errors
+      leaveRequest.user_id = userId;
+      
       await leaveRequest.save();
+
+      if (decision === 'approve') {
+        // Check if employee had sufficient credits when submitting the request
+        const hasSufficientCredits = await hasSufficientLeaveCredits(
+          userId,
+          leaveType,
+          numberOfDays
+        );
+        
+        // Create a simplified leave request object with the properties we need
+        const simplifiedLeaveRequest = {
+          user_id: userId,
+          leave_type: leaveType,
+          number_of_days: numberOfDays,
+          without_pay: withoutPay,
+          start_date: startDate,
+          end_date: endDate,
+          subtype: subtype
+        };
+        
+        // Record the leave (always do this for approved leaves)
+        await MayorController.recordLeave(simplifiedLeaveRequest, hasSufficientCredits);
+      }
       
       // Send notifications
       try {
