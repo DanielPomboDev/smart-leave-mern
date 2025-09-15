@@ -130,11 +130,21 @@ const MayorLeaveRequestDetails = () => {
               {/* Employee Info */}
               <div className="flex items-center mb-6 pb-4 border-b border-gray-200">
                 <div className="avatar placeholder mr-4">
-                  <div className="bg-neutral text-neutral-content rounded-full w-16">
-                    <span className="text-xl">
-                      {leaveRequest.user_id?.first_name?.charAt(0)}{leaveRequest.user_id?.last_name?.charAt(0)}
-                    </span>
-                  </div>
+                  {leaveRequest.user_id?.profile_image ? (
+                    <div className="bg-neutral text-neutral-content rounded-full w-16">
+                      <img 
+                        src={leaveRequest.user_id.profile_image} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-neutral text-neutral-content rounded-full w-16">
+                      <span className="text-xl">
+                        {leaveRequest.user_id?.first_name?.charAt(0)}{leaveRequest.user_id?.last_name?.charAt(0)}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <h4 className="text-xl font-bold text-gray-800">

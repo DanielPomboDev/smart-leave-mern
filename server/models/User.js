@@ -44,6 +44,9 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['employee', 'hr', 'department_admin', 'mayor'],
     default: 'employee'
+  },
+  profile_image: {
+    type: String
   }
 }, {
   timestamps: true

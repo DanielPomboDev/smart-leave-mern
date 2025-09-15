@@ -130,7 +130,8 @@ const getProfile = async (req, res) => {
         position: req.user.position,
         salary: req.user.salary,
         start_date: req.user.start_date,
-        user_type: req.user.user_type
+        user_type: req.user.user_type,
+        profile_image: req.user.profile_image
       }
     });
   } catch (error) {
@@ -138,6 +139,55 @@ const getProfile = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error while fetching profile'
+    });
+  }
+};
+
+// @desc    Update user profile image
+// @route   POST /api/auth/profile/image
+// @access  Private
+const updateProfileImage = async (req, res) => {
+  try {
+    // req.user is set by the auth middleware
+    if (!req.user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file provided'
+      });
+    }
+
+    // Update user with new profile image URL
+    const user = await User.findOneAndUpdate(
+      { user_id: req.user.user_id },
+      { profile_image: req.file.path },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Profile image updated successfully',
+      profile_image: req.file.path
+    });
+  } catch (error) {
+    console.error('Error updating profile image:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while updating profile image'
     });
   }
 };
@@ -156,5 +206,6 @@ module.exports = {
   showLogin,
   login,
   getProfile,
+  updateProfileImage,
   logout
 };

@@ -10,10 +10,11 @@ const Layout = ({ children, title = "Dashboard" }) => {
   const [user, setUser] = useState({
     first_name: "John",
     last_name: "Doe",
-    user_type: "employee"
+    user_type: "employee",
+    profile_image: null
   });
 
-  // Fetch user profile on component mount
+  // Fetch user profile on component mount and when location changes
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -42,7 +43,23 @@ const Layout = ({ children, title = "Dashboard" }) => {
     };
 
     fetchUserProfile();
-  }, [navigate]);
+    
+    // Listen for profile updates
+    const handleProfileUpdate = (event) => {
+      if (event.detail && event.detail.user) {
+        setUser(prevUser => ({
+          ...prevUser,
+          ...event.detail.user
+        }));
+      }
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, [navigate, location]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -168,11 +185,21 @@ const Layout = ({ children, title = "Dashboard" }) => {
               </div>
 
               <div className="avatar placeholder">
-                <div className="bg-neutral text-neutral-content w-12 rounded-full">
-                  <span className="text-xl">
-                    {user.first_name.charAt(0)}{user.last_name.charAt(0)}
-                  </span>
-                </div>
+                {user?.profile_image ? (
+                  <div className="w-12 rounded-full">
+                    <img 
+                      src={user.profile_image} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-neutral text-neutral-content w-12 rounded-full">
+                    <span className="text-xl">
+                      {user.first_name.charAt(0)}{user.last_name.charAt(0)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
