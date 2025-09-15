@@ -10,6 +10,9 @@ import LeaveHistory from './components/LeaveHistory';
 import Profile from './components/Profile';
 import Settings from './components/Settings';
 import LeaveRequestDetails from './components/LeaveRequestDetails';
+import HRDashboard from './components/HRDashboard';
+import HRLeaveRequests from './components/HRLeaveRequests';
+import HRLeaveRequestDetails from './components/HRLeaveRequestDetails';
 import './App.css';
 
 function App() {
@@ -28,6 +31,9 @@ function App() {
           <Route path="/employee/profile" element={<Profile />} />
           <Route path="/employee/settings" element={<Settings />} />
           <Route path="/employee/leave-request/:id" element={<LeaveRequestDetails />} />
+          <Route path="/hr/dashboard" element={<HRDashboard />} />
+          <Route path="/hr/leave-requests" element={<HRLeaveRequests />} />
+          <Route path="/hr/leave-request/:id" element={<HRLeaveRequestDetails />} />
         </Routes>
       </div>
     </Router>

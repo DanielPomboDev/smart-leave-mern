@@ -70,7 +70,11 @@ leaveRequestSchema.pre(/^find/, function(next) {
     path: 'user_id',
     select: 'first_name last_name middle_initial department_id position user_id',
     foreignField: 'user_id',  // Match User's user_id field instead of _id
-    localField: 'user_id'     // Use LeaveRequest's user_id field
+    localField: 'user_id',     // Use LeaveRequest's user_id field
+    populate: {
+      path: 'department_id',
+      select: 'name'
+    }
   });
   next();
 });

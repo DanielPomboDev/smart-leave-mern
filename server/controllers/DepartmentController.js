@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const LeaveRequest = require('../models/LeaveRequest');
+const LeaveRecommendation = require('../models/LeaveRecommendation');
 
 // @desc    Get department dashboard statistics
 // @route   GET /api/department/dashboard
@@ -324,6 +325,16 @@ const recommendLeaveRequest = async (req, res) => {
       });
     }
     
+    // Create a leave recommendation record
+    const recommendationRecord = new LeaveRecommendation({
+      department_admin_id: req.user.user_id,
+      leave_id: leaveRequestId,
+      recommendation: recommendation,
+      remarks: recommendation === 'approve' ? approval_reason : disapproval_reason
+    });
+
+    await recommendationRecord.save();
+
     // Update the leave request status
     const newStatus = recommendation === 'approve' ? 'recommended' : 'disapproved';
     leaveRequest.status = newStatus;

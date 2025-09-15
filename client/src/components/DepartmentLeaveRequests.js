@@ -5,8 +5,15 @@ import { useNavigate } from 'react-router-dom';
 
 const DepartmentLeaveRequests = () => {
   const [leaveRequests, setLeaveRequests] = useState([]);
+  const [filteredRequests, setFilteredRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [filters, setFilters] = useState({
+    status: 'all',
+    leaveType: 'all',
+    dateRange: 'all',
+    search: ''
+  });
   const navigate = useNavigate();
 
   // Fetch department leave requests
@@ -24,6 +31,7 @@ const DepartmentLeaveRequests = () => {
         if (response.data.success) {
           console.log('Leave requests data structure:', response.data.data);
           setLeaveRequests(response.data.data || []);
+          setFilteredRequests(response.data.data || []);
         }
       } catch (error) {
         console.error('Error fetching leave requests:', error);
@@ -35,6 +43,67 @@ const DepartmentLeaveRequests = () => {
 
     fetchLeaveRequests();
   }, []);
+
+  // Apply filters when they change or when leaveRequests change
+  useEffect(() => {
+    let filtered = [...leaveRequests];
+
+    // Apply search filter
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      filtered = filtered.filter(request => {
+        const employeeName = `${request.user_id?.first_name || ''} ${request.user_id?.last_name || ''}`.toLowerCase();
+        return employeeName.includes(searchTerm);
+      });
+    }
+
+    // Apply leave type filter
+    if (filters.leaveType !== 'all') {
+      filtered = filtered.filter(request => request.leave_type === filters.leaveType);
+    }
+
+    // Apply status filter
+    if (filters.status !== 'all') {
+      filtered = filtered.filter(request => request.status === filters.status);
+    }
+
+    // Apply date range filter
+    if (filters.dateRange !== 'all') {
+      const now = new Date();
+      filtered = filtered.filter(request => {
+        const requestDate = new Date(request.createdAt);
+        switch (filters.dateRange) {
+          case 'today':
+            return requestDate.toDateString() === now.toDateString();
+          case 'week':
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay());
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            return requestDate >= weekStart && requestDate <= weekEnd;
+          case 'month':
+            return requestDate.getMonth() === now.getMonth() && requestDate.getFullYear() === now.getFullYear();
+          default:
+            return true;
+        }
+      });
+    }
+
+    setFilteredRequests(filtered);
+  }, [filters, leaveRequests]);
+
+  const handleFilterChange = (e) => {
+    setFilters({ ...filters, [e.target.name]: e.target.value });
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      status: 'all',
+      leaveType: 'all',
+      dateRange: 'all',
+      search: ''
+    });
+  };
 
   const getStatusClass = (status) => {
     switch (status) {
@@ -62,7 +131,7 @@ const DepartmentLeaveRequests = () => {
       case 'pending':
         return 'Pending';
       case 'disapproved':
-        return 'Rejected';
+        return 'Disapproved';
       case 'recommended':
         return 'Recommended';
       case 'hr_approved':
@@ -72,6 +141,26 @@ const DepartmentLeaveRequests = () => {
       default:
         return status;
     }
+  };
+
+  const getLeaveTypeText = (type) => {
+    switch (type) {
+      case 'vacation':
+        return 'Vacation Leave';
+      case 'sick':
+        return 'Sick Leave';
+      default:
+        return type;
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   if (loading) {
@@ -101,86 +190,185 @@ const DepartmentLeaveRequests = () => {
     <Layout title="Department Leave Requests">
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">
-            <i className="fas fa-history text-blue-500 mr-2"></i>
-            All Department Leave Requests
-          </h2>
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-gray-800">
+              <i className="fas fa-history text-blue-500 mr-2"></i>
+              Department Leave Requests
+            </h2>
+          </div>
         </div>
-        
+
+        {/* Filters */}
+        <div className="bg-gray-50 p-6 border-b border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="lg:col-span-2">
+              <label className="label">
+                <span className="label-text font-medium">Search Employee</span>
+              </label>
+              <input
+                type="text"
+                name="search"
+                placeholder="Search by employee name..."
+                value={filters.search}
+                onChange={handleFilterChange}
+                className="input input-bordered w-full"
+              />
+            </div>
+            
+            <div>
+              <label className="label">
+                <span className="label-text font-medium">Leave Type</span>
+              </label>
+              <select
+                name="leaveType"
+                value={filters.leaveType}
+                onChange={handleFilterChange}
+                className="select select-bordered w-full"
+              >
+                <option value="all">All Types</option>
+                <option value="vacation">Vacation Leave</option>
+                <option value="sick">Sick Leave</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="label">
+                <span className="label-text font-medium">Status</span>
+              </label>
+              <select
+                name="status"
+                value={filters.status}
+                onChange={handleFilterChange}
+                className="select select-bordered w-full"
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="recommended">Recommended</option>
+                <option value="hr_approved">HR Approved</option>
+                <option value="approved">Approved</option>
+                <option value="disapproved">Disapproved</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="label">
+                <span className="label-text font-medium">Date Range</span>
+              </label>
+              <select
+                name="dateRange"
+                value={filters.dateRange}
+                onChange={handleFilterChange}
+                className="select select-bordered w-full"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+              </select>
+            </div>
+          </div>
+          
+          {(filters.status !== 'all' || filters.leaveType !== 'all' || filters.dateRange !== 'all' || filters.search) && (
+            <div className="mt-4">
+              <button 
+                className="btn btn-sm btn-ghost"
+                onClick={clearFilters}
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Leave Requests Table */}
         <div className="p-6">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Employee
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Leave Type
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Period
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    No. of Days
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {leaveRequests.length > 0 ? (
-                  leaveRequests.map((leaveRequest) => (
-                    <tr key={leaveRequest._id}>
+            {filteredRequests.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <i className="fas fa-inbox text-3xl mb-2"></i>
+                <p>No leave requests found</p>
+                {(filters.status !== 'all' || filters.leaveType !== 'all' || filters.dateRange !== 'all' || filters.search) && (
+                  <button 
+                    className="mt-2 text-blue-600 hover:text-blue-800"
+                    onClick={clearFilters}
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Employee
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Leave Type
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Period
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      No. of Days
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Applied On
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredRequests.map((request) => (
+                    <tr key={request._id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="ml-4">
+                          <div>
                             <div className="text-sm font-medium text-gray-900">
-                              {leaveRequest.user_id?.first_name ? `${leaveRequest.user_id.first_name} ${leaveRequest.user_id.last_name}` : 'Unknown Employee'}
+                              {request.user_id?.first_name} {request.user_id?.last_name}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {leaveRequest.user_id?.position || 'Position not specified'}
+                              {request.user_id?.position || 'Position not specified'}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {leaveRequest.leave_type === 'vacation' ? 'Vacation Leave' : 'Sick Leave'}
+                        {getLeaveTypeText(request.leave_type)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(leaveRequest.start_date).toLocaleDateString()} - {new Date(leaveRequest.end_date).toLocaleDateString()}
+                        {formatDate(request.start_date)} - {formatDate(request.end_date)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {leaveRequest.number_of_days}
+                        {request.number_of_days}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(leaveRequest.status)}`}>
-                          {getStatusText(leaveRequest.status)}
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(request.status)}`}>
+                          {getStatusText(request.status)}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(request.createdAt)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
-                          onClick={() => navigate(`/department/leave-request/${leaveRequest._id}`)}
+                          onClick={() => navigate(`/department/leave-request/${request._id}`)}
                           className="btn btn-xs btn-primary"
                         >
                           View
                         </button>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
-                      No leave requests found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>

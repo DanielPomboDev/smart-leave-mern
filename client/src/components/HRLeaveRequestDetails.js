@@ -1,0 +1,592 @@
+import React, { useState, useEffect } from 'react';
+import Layout from './Layout';
+import axios from 'axios';
+import { useNavigate, useParams } from 'react-router-dom';
+
+const HRLeaveRequestDetails = () => {
+  const [leaveRequest, setLeaveRequest] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [approvalData, setApprovalData] = useState({
+    approval: 'approve',
+    approved_for: 'with_pay',
+    approved_for_other: '',
+    disapproved_due_to: ''
+  });
+  const [currentStep, setCurrentStep] = useState(1);
+  const [hasSufficientCredits, setHasSufficientCredits] = useState(true);
+  
+  const navigate = useNavigate();
+  const { id } = useParams();
+
+  // Fetch leave request details
+  useEffect(() => {
+    const fetchLeaveRequest = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`http://localhost:5000/api/hr/leave-requests/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.data.success) {
+          setLeaveRequest(response.data.leaveRequest);
+          setHasSufficientCredits(response.data.hasSufficientCredits);
+        }
+      } catch (error) {
+        console.error('Error fetching leave request:', error);
+        setError('Failed to load leave request details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchLeaveRequest();
+    }
+  }, [id]);
+
+  const handleApprovalChange = (field, value) => {
+    setApprovalData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const toggleDecisionOptions = () => {
+    // This will be handled by the UI directly
+  };
+
+  const nextStep = (step) => {
+    setCurrentStep(step + 1);
+  };
+
+  const prevStep = (step) => {
+    setCurrentStep(step - 1);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`http://localhost:5000/api/hr/leave-requests/${id}/approve`, approvalData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data.success) {
+        navigate('/hr/leave-requests', { 
+          state: { message: 'Leave request has been processed successfully.' } 
+        });
+      }
+    } catch (error) {
+      console.error('Error processing leave request:', error);
+      setError('Failed to process leave request: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'approved':
+        return 'Approved';
+      case 'pending':
+        return 'Pending';
+      case 'disapproved':
+        return 'Rejected';
+      case 'recommended':
+        return 'Recommended';
+      case 'hr_approved':
+        return 'HR Approved';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status;
+    }
+  };
+
+  if (loading) {
+    return (
+      <Layout title="Approve Leave Request">
+        <div className="flex justify-center items-center h-64">
+          <span className="loading loading-spinner loading-lg"></span>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout title="Approve Leave Request">
+        <div className="alert alert-error">
+          <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{error}</span>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!leaveRequest) {
+    return (
+      <Layout title="Approve Leave Request">
+        <div className="alert alert-warning">
+          <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>Leave request not found</span>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout title="Approve Leave Request">
+      <div className="card bg-white shadow-md mb-6">
+        <div className="card-body">
+          <h2 className="card-title text-xl font-bold text-gray-800 mb-4">
+            <i className="fas fa-check-circle text-green-500 mr-2"></i>
+            Leave Approval Process
+          </h2>
+
+          {/* Notice for insufficient credits */}
+          {!hasSufficientCredits && (
+            <div className="alert alert-warning shadow-lg mb-6">
+              <div>
+                <i className="fas fa-info-circle text-warning"></i>
+                <span><strong>Notice:</strong> This leave request was submitted with insufficient leave credits. The "with pay" option has been disabled.</span>
+              </div>
+            </div>
+          )}
+
+          {/* Step Indicator */}
+          <div className="w-full py-4">
+            <ul className="steps steps-horizontal w-full">
+              <li className={`step ${currentStep >= 1 ? 'step-primary' : ''}`}>Review Request</li>
+              <li className={`step ${currentStep >= 2 ? 'step-primary' : ''}`} id="step2Indicator">Approval Decision</li>
+              <li className={`step ${currentStep >= 3 ? 'step-primary' : ''}`} id="step3Indicator">Review</li>
+            </ul>
+          </div>
+
+          <form id="approvalForm" onSubmit={handleSubmit}>
+            {/* Step 1: Review Request */}
+            {currentStep === 1 && (
+              <div id="step1" className="space-y-6">
+                <h3 className="font-medium text-lg text-gray-800">Review Leave Request</h3>
+
+                <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm">
+                  {/* Employee Info */}
+                  <div className="flex items-center mb-6 pb-4 border-b border-gray-200">
+                    <div className="avatar mr-4">
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
+                        <span className="text-white font-bold text-lg flex items-center justify-center w-full h-full">
+                          {leaveRequest.user_id?.first_name ? 
+                            `${leaveRequest.user_id.first_name.charAt(0)}${leaveRequest.user_id.last_name.charAt(0)}`.toUpperCase() : 
+                            'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-bold text-gray-800">
+                        {leaveRequest.user_id?.first_name ? 
+                          `${leaveRequest.user_id.first_name} ${leaveRequest.user_id.last_name}` : 
+                          'Unknown Employee'}
+                      </h4>
+                      <p className="text-gray-600">
+                        {leaveRequest.user_id?.department_id?.name || 'Department not specified'} • 
+                        {leaveRequest.user_id?.position || 'Position not specified'}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {leaveRequest.leave_type === 'vacation' ? 'Vacation' : 'Sick'} Balance: {leaveRequest.user_id?.leave_balance || 0} days
+                      </p>
+                      {!hasSufficientCredits && (
+                        <div className="badge badge-warning mt-2">Submitted with insufficient credits</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Request Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                      <h5 className="font-semibold text-blue-600 mb-3">Type of Leave</h5>
+                      <p className="font-medium text-gray-800 text-lg">
+                        {leaveRequest.leave_type === 'vacation' ? 'Vacation Leave' : 
+                         leaveRequest.leave_type === 'sick' ? 'Sick Leave' : 
+                         leaveRequest.leave_type}
+                      </p>
+                      {leaveRequest.subtype && (
+                        <p className="text-gray-600 mt-1">{leaveRequest.subtype}</p>
+                      )}
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                      <h5 className="font-semibold text-blue-600 mb-3">Applied On</h5>
+                      <p className="font-medium text-gray-800 text-lg">
+                        {new Date(leaveRequest.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                      <h5 className="font-semibold text-blue-600 mb-3">Inclusive Dates</h5>
+                      <p className="font-medium text-gray-800 text-lg">
+                        {new Date(leaveRequest.start_date).toLocaleDateString() === new Date(leaveRequest.end_date).toLocaleDateString()
+                          ? new Date(leaveRequest.start_date).toLocaleDateString()
+                          : `${new Date(leaveRequest.start_date).toLocaleDateString()}-${new Date(leaveRequest.end_date).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                      <h5 className="font-semibold text-blue-600 mb-3">Number of Working Days</h5>
+                      <p className="font-medium text-gray-800 text-lg">{leaveRequest.number_of_days} days</p>
+                    </div>
+                  </div>
+
+                  {/* Additional Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                      <h5 className="font-semibold text-blue-600 mb-3">Where Leave Will Be Spent</h5>
+                      <p className="font-medium text-gray-800">{leaveRequest.where_spent}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                      <h5 className="font-semibold text-blue-600 mb-3">Commutation</h5>
+                      <p className="font-medium text-gray-800">
+                        {leaveRequest.commutation ? 'Requested' : 'Not Requested'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Recommendation Section */}
+                  {leaveRequest.recommendations && leaveRequest.recommendations.length > 0 && (
+                    <div className="p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
+                      <h4 className="font-semibold text-blue-600 mb-3">Department Recommendation</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Authorized Personnel</label>
+                          <p className="font-medium text-gray-800">
+                            {leaveRequest.recommendations[0]?.department_admin_id?.first_name || ''} 
+                            {leaveRequest.recommendations[0]?.department_admin_id?.last_name ? ` ${leaveRequest.recommendations[0].department_admin_id.last_name}` : ''}
+                          </p>
+                          <p className="text-sm text-gray-500">Department Head</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Decision</label>
+                          <p className="font-medium text-gray-800 text-capitalize">
+                            {leaveRequest.recommendations[0]?.recommendation || ''}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {leaveRequest.recommendations[0]?.remarks || ''}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end mt-6">
+                  {leaveRequest.status === 'recommended' ? (
+                    <button 
+                      type="button" 
+                      className="btn bg-blue-500 hover:bg-blue-600 text-white"
+                      onClick={() => nextStep(1)}
+                    >
+                      Next
+                    </button>
+                  ) : (
+                    <button type="button" className="btn" disabled>
+                      {leaveRequest.status === 'cancelled' ? 'Cancelled' : 'Next'}
+                      {leaveRequest.status === 'cancelled' ? 
+                        <i className="fas fa-ban ml-2"></i> : 
+                        <i className="fas fa-lock ml-2"></i>}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Approval Decision */}
+            {currentStep === 2 && (
+              <div id="step2" className="space-y-6">
+                <h3 className="font-medium text-lg text-gray-800">Approval Decision</h3>
+
+                <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                  <h4 className="font-medium mb-4">Recommendation/Approval</h4>
+
+                  <div className="form-control mb-4">
+                    <label className="label">
+                      <span className="label-text font-medium">Decision</span>
+                    </label>
+                    <div className="flex flex-col space-y-3">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="approval" 
+                          value="approve"
+                          className="radio radio-success" 
+                          checked={approvalData.approval === 'approve'}
+                          onChange={(e) => handleApprovalChange('approval', e.target.value)}
+                        />
+                        <span>Approve</span>
+                      </label>
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="approval" 
+                          value="disapprove"
+                          className="radio radio-error" 
+                          checked={approvalData.approval === 'disapprove'}
+                          onChange={(e) => handleApprovalChange('approval', e.target.value)}
+                        />
+                        <span>Disapprove</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Sub-options for Approval */}
+                  {approvalData.approval === 'approve' && (
+                    <div id="approvalOptionsContainer" className="ml-6 border-l-2 border-green-200 pl-4 mb-4">
+                      <div className="form-control">
+                        <label className="label">
+                          <span className="label-text font-medium">Approval Type:</span>
+                        </label>
+                        <div className="flex flex-col space-y-3">
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              name="approved_for" 
+                              value="with_pay"
+                              className="radio radio-sm radio-success" 
+                              checked={approvalData.approved_for === 'with_pay'}
+                              onChange={(e) => handleApprovalChange('approved_for', e.target.value)}
+                              disabled={!hasSufficientCredits}
+                            />
+                            <span>Approved for {leaveRequest.number_of_days} day(s) with pay</span>
+                            {!hasSufficientCredits && (
+                              <span className="badge badge-warning ml-2">Insufficient credits</span>
+                            )}
+                          </label>
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              name="approved_for" 
+                              value="without_pay"
+                              className="radio radio-sm radio-warning" 
+                              checked={approvalData.approved_for === 'without_pay'}
+                              onChange={(e) => handleApprovalChange('approved_for', e.target.value)}
+                            />
+                            <span>Approved for {leaveRequest.number_of_days} day(s) without pay</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Disapproval Reason */}
+                  {approvalData.approval === 'disapprove' && (
+                    <div id="disapprovalReasonContainer" className="ml-6 border-l-2 border-red-200 pl-4">
+                      <div className="form-control">
+                        <label className="label">
+                          <span className="label-text font-medium">Reason for disapproval:</span>
+                        </label>
+                        <textarea 
+                            name="disapproved_due_to" 
+                            className="textarea textarea-bordered h-24"
+                            placeholder="Enter reason for disapproval..."
+                            value={approvalData.disapproved_due_to}
+                            onChange={(e) => handleApprovalChange('disapproved_due_to', e.target.value)}
+                          ></textarea>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-between mt-6">
+                  <button 
+                    type="button"
+                    className="btn btn-outline border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white"
+                    onClick={() => prevStep(2)}
+                  >
+                    Previous
+                  </button>
+                  {leaveRequest.status === 'recommended' ? (
+                    <button 
+                      type="button" 
+                      className="btn bg-blue-500 hover:bg-blue-600 text-white"
+                      onClick={() => nextStep(2)}
+                    >
+                      Next
+                    </button>
+                  ) : (
+                    <button type="button" className="btn" disabled>
+                      {leaveRequest.status === 'cancelled' ? 'Cancelled' : 'Next'}
+                      {leaveRequest.status === 'cancelled' ? 
+                        <i className="fas fa-ban ml-2"></i> : 
+                        <i className="fas fa-lock ml-2"></i>}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Review */}
+            {currentStep === 3 && (
+              <div id="step3" className="space-y-6">
+                <div className="card bg-white shadow-md mb-6">
+                  <div className="card-body">
+                    <h2 className="card-title text-xl font-bold text-gray-800 mb-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2l4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Leave Final Review
+                    </h2>
+                    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm mb-6">
+                      {/* Employee Info */}
+                      <div className="flex items-center mb-6 pb-4 border-b border-gray-200">
+                        <div className="avatar mr-4">
+                          <div className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
+                            <span className="text-white font-bold text-lg flex items-center justify-center w-full h-full">
+                              {leaveRequest.user_id?.first_name ? 
+                                `${leaveRequest.user_id.first_name.charAt(0)}${leaveRequest.user_id.last_name.charAt(0)}`.toUpperCase() : 
+                                'N/A'}
+                            </span>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-xl font-bold text-gray-800">
+                            {leaveRequest.user_id?.first_name ? 
+                              `${leaveRequest.user_id.first_name} ${leaveRequest.user_id.last_name}` : 
+                              'Unknown Employee'}
+                          </h4>
+                          <p className="text-gray-600">
+                            {leaveRequest.user_id?.department_id?.name || 'Department not specified'} • 
+                            {leaveRequest.user_id?.position || 'Position not specified'}
+                          </p>
+                        </div>
+                      </div>
+                      {/* Request Details */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                          <h5 className="font-semibold text-blue-600 mb-3">Type of Leave</h5>
+                          <p className="font-medium text-gray-800 text-lg">
+                            {leaveRequest.leave_type === 'vacation' ? 'Vacation Leave' : 
+                             leaveRequest.leave_type === 'sick' ? 'Sick Leave' : 
+                             leaveRequest.leave_type}
+                          </p>
+                        </div>
+                        <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                          <h5 className="font-semibold text-blue-600 mb-3">Applied On</h5>
+                          <p className="font-medium text-gray-800 text-lg">
+                            {new Date(leaveRequest.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                          <h5 className="font-semibold text-blue-600 mb-3">Inclusive Dates</h5>
+                          <p className="font-medium text-gray-800 text-lg">
+                            {new Date(leaveRequest.start_date).toLocaleDateString() === new Date(leaveRequest.end_date).toLocaleDateString()
+                              ? new Date(leaveRequest.start_date).toLocaleDateString()
+                              : `${new Date(leaveRequest.start_date).toLocaleDateString()}-${new Date(leaveRequest.end_date).toLocaleDateString()}`}
+                          </p>
+                        </div>
+                        <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                          <h5 className="font-semibold text-blue-600 mb-3">Number of Working Days</h5>
+                          <p className="font-medium text-gray-800 text-lg">{leaveRequest.number_of_days} days</p>
+                        </div>
+                      </div>
+                      {/* Additional Details */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                          <h5 className="font-semibold text-blue-600 mb-3">Where Leave Will Be Spent</h5>
+                          <p className="font-medium text-gray-800">{leaveRequest.where_spent}</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                          <h5 className="font-semibold text-blue-600 mb-3">Commutation</h5>
+                          <p className="font-medium text-gray-800">
+                            {leaveRequest.commutation ? 'Requested' : 'Not Requested'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Recommendation Section */}
+                    {leaveRequest.recommendations && leaveRequest.recommendations.length > 0 && (
+                      <div className="p-4 bg-white rounded-lg border border-blue-200 shadow-sm mb-6">
+                        <h4 className="font-semibold text-blue-600 mb-3">Department Admin Recommendation</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Authorized Personnel</label>
+                            <p className="font-medium text-gray-800">
+                              {leaveRequest.recommendations[0]?.department_admin_id?.first_name || ''} 
+                              {leaveRequest.recommendations[0]?.department_admin_id?.last_name ? ` ${leaveRequest.recommendations[0].department_admin_id.last_name}` : ''}
+                            </p>
+                            <p className="text-sm text-gray-500">Department Head</p>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Decision</label>
+                            <p className="font-medium text-gray-800 text-capitalize">
+                              {leaveRequest.recommendations[0]?.recommendation || ''}
+                            </p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {leaveRequest.recommendations[0]?.remarks || ''}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {/* Approval Section */}
+                    <div className="p-4 bg-white rounded-lg border border-green-200 shadow-sm mb-6">
+                      <h4 className="font-semibold text-green-600 mb-3">HR Manager Approval</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">HR Personnel</label>
+                          <p className="font-medium text-gray-800" id="hrPersonnelName">
+                            {/* This would be the logged in HR user's name */}
+                          </p>
+                          <p className="text-sm text-gray-500" id="hrPersonnelPosition">
+                            {/* This would be the logged in HR user's position */}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Decision</label>
+                          <p className="font-medium text-gray-800 text-capitalize" id="hrDecisionText">
+                            {approvalData.approval}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1" id="hrDecisionDetails">
+                            {approvalData.approval === 'approve' 
+                              ? (approvalData.approved_for === 'with_pay' 
+                                  ? 'Approved for days with pay' 
+                                  : 'Approved for days without pay')
+                              : approvalData.disapproved_due_to || '—'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Submit Button */}
+                    <div className="flex justify-end mt-6">
+                      {leaveRequest.status === 'recommended' ? (
+                        <button 
+                          type="submit" 
+                          className="btn bg-blue-500 hover:bg-blue-600 text-white"
+                        >
+                          Submit
+                        </button>
+                      ) : (
+                        <button type="button" className="btn" disabled>
+                          {leaveRequest.status === 'cancelled' ? 'Cancelled' : 'Submit'}
+                          {leaveRequest.status === 'cancelled' ? 
+                            <i className="fas fa-ban ml-2"></i> : 
+                            <i className="fas fa-lock ml-2"></i>}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </form>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default HRLeaveRequestDetails;
