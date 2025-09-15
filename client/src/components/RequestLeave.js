@@ -12,6 +12,8 @@ const RequestLeave = () => {
   const [error, setError] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [warningMessage, setWarningMessage] = useState('');
   
   const [formData, setFormData] = useState({
     leaveType: '',
@@ -36,6 +38,11 @@ const RequestLeave = () => {
     commutation: ''
   });
 
+  // State for leave credits
+  const [vacationBalance, setVacationBalance] = useState(0);
+  const [sickBalance, setSickBalance] = useState(0);
+  const [loadingCredits, setLoadingCredits] = useState(true);
+
   // Set minimum start date based on today
   useEffect(() => {
     const today = new Date();
@@ -45,6 +52,35 @@ const RequestLeave = () => {
       startDate: formattedToday,
       endDate: formattedToday
     }));
+  }, []);
+
+  // Fetch current leave credits
+  const fetchLeaveCredits = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5000/api/leave-records/current', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data) {
+        setVacationBalance(response.data.vacationBalance || 0);
+        setSickBalance(response.data.sickBalance || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching leave credits:', error);
+      // Set default values in case of error
+      setVacationBalance(0);
+      setSickBalance(0);
+    } finally {
+      setLoadingCredits(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeaveCredits();
   }, []);
 
   // Update end date min when start date changes
@@ -286,6 +322,23 @@ const RequestLeave = () => {
         commutation: formData.commutation,
         location_specify: formData.locationSpecify
       };
+
+      // Check if user has sufficient leave credits before submitting
+      const hasSufficientCredits = formData.leaveType === 'vacation' 
+        ? formData.numberOfDays <= vacationBalance
+        : formData.numberOfDays <= sickBalance;
+
+      // If insufficient credits, show warning modal
+      if (!hasSufficientCredits) {
+        const leaveType = formData.leaveType === 'vacation' ? 'Vacation' : 'Sick';
+        const availableCredits = formData.leaveType === 'vacation' ? vacationBalance : sickBalance;
+        const warningMsg = `Insufficient ${leaveType.toLowerCase()} leave credits. You have ${availableCredits.toFixed(3)} days available but are requesting ${formData.numberOfDays} days. This leave will be considered without pay if approved by HR. Do you want to proceed?`;
+        
+        setWarningMessage(warningMsg);
+        setShowWarningModal(true);
+        setLoading(false);
+        return;
+      }
 
       // Get token from localStorage
       const token = localStorage.getItem('token');
@@ -851,6 +904,61 @@ const RequestLeave = () => {
           setShowSuccessModal(false);
           navigate('/employee/leave-history');
         }}
+      />
+
+      {/* Warning Modal */}
+      <ConfirmationModal
+        isOpen={showWarningModal}
+        onClose={() => setShowWarningModal(false)}
+        onConfirm={async () => {
+          // Close the warning modal and submit the request
+          setShowWarningModal(false);
+          // Proceed with submission
+          try {
+            // Prepare data for submission
+            const requestData = {
+              leave_type: formData.leaveType,
+              subtype: formData.leaveType === 'vacation' 
+                ? formData.vacationSubtype === 'other' 
+                  ? formData.vacationOtherSpecify 
+                  : formData.vacationSubtype
+                : formData.sickSubtype === 'other' 
+                  ? formData.sickOtherSpecify 
+                  : formData.sickSubtype,
+              start_date: formData.startDate,
+              end_date: formData.endDate,
+              number_of_days: formData.numberOfDays,
+              where_spent: formData.locationType,
+              commutation: formData.commutation,
+              location_specify: formData.locationSpecify
+            };
+
+            // Get token from localStorage
+            const token = localStorage.getItem('token');
+            
+            // Make API call
+            const response = await axios.post('http://localhost:5000/api/leave-requests', requestData, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (response.data.success) {
+              // Show success modal
+              setShowSuccessModal(true);
+            } else {
+              setError(response.data.message || 'Failed to submit leave request');
+            }
+          } catch (error) {
+            console.error('Error submitting leave request:', error);
+            setError(error.response?.data?.message || 'Failed to submit leave request. Please try again.');
+          }
+        }}
+        title="Insufficient Leave Credits"
+        message={warningMessage}
+        confirmText="Submit Anyway"
+        cancelText="Cancel"
       />
 
       {/* Confirmation Modal */}

@@ -262,6 +262,11 @@ const HRLeaveRequests = () => {
                         {leaveRequest.leave_type === 'vacation' ? 'Vacation Leave' : 
                          leaveRequest.leave_type === 'sick' ? 'Sick Leave' : 
                          leaveRequest.leave_type}
+                        {leaveRequest.without_pay && (
+                          <span className="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
+                            Without Pay
+                          </span>
+                        )}
                       </td>
                       <td>{new Date(leaveRequest.createdAt).toLocaleDateString()}</td>
                       <td>

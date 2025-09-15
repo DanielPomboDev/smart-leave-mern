@@ -2,6 +2,44 @@ const LeaveRecord = require('../models/LeaveRecord');
 const User = require('../models/User');
 const { createLeaveRecordValidation, updateLeaveRecordValidation, addUndertimeValidation } = require('../middleware/leaveRecordValidation');
 
+// Check if user has sufficient leave credits
+exports.hasSufficientLeaveCredits = async (userId, leaveType, numberOfDays) => {
+  try {
+    // Get the latest leave record for this user to determine their current balance
+    const latestLeaveRecord = await LeaveRecord
+      .findOne({ user_id: userId })
+      .sort({ year: -1, month: -1 })
+      .exec();
+    
+    // If no record exists, use default values
+    if (!latestLeaveRecord) {
+      const vacationBalance = 15; // Default vacation balance
+      const sickBalance = 12;     // Default sick balance
+      
+      if (leaveType === 'vacation') {
+        return vacationBalance >= numberOfDays;
+      } else if (leaveType === 'sick') {
+        return sickBalance >= numberOfDays;
+      }
+      
+      return false;
+    }
+    
+    // Check if the user has sufficient credits
+    if (leaveType === 'vacation') {
+      return latestLeaveRecord.vacation_balance >= numberOfDays;
+    } else if (leaveType === 'sick') {
+      return latestLeaveRecord.sick_balance >= numberOfDays;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error checking leave credits:', error);
+    // If there's an error, we'll allow the request to proceed to avoid blocking users
+    return true;
+  }
+};
+
 // Get all leave records with optional filtering
 exports.index = async (req, res) => {
   try {
@@ -47,6 +85,34 @@ exports.index = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching leave records', error: error.message });
+  }
+};
+
+// Get current leave credits for an employee
+exports.getCurrentLeaveCredits = async (req, res) => {
+  try {
+    const userId = req.user.user_id; // Get user ID from authenticated user
+    
+    // Get the most recent leave record for this user
+    const latestRecord = await LeaveRecord
+      .findOne({ user_id: userId })
+      .sort({ year: -1, month: -1 })
+      .exec();
+    
+    if (!latestRecord) {
+      // If no record exists, return default values
+      return res.json({
+        vacationBalance: 0,
+        sickBalance: 0
+      });
+    }
+    
+    res.json({
+      vacationBalance: latestRecord.vacation_balance,
+      sickBalance: latestRecord.sick_balance
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching leave credits', error: error.message });
   }
 };
 

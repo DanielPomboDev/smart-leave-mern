@@ -300,6 +300,11 @@ const LeaveHistory = () => {
                           <tr key={request._id}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {getLeaveTypeText(request.leave_type)}
+                              {request.without_pay && (
+                                <span className="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
+                                  Without Pay
+                                </span>
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {formatDate(request.start_date)} - {formatDate(request.end_date)}

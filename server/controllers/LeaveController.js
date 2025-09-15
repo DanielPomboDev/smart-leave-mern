@@ -1,6 +1,7 @@
 const LeaveRequest = require('../models/LeaveRequest');
 const { sendNewLeaveRequestNotification } = require('../utils/notificationUtils');
 const User = require('../models/User');
+const { hasSufficientLeaveCredits } = require('./LeaveRecordController');
 
 // @desc    Create a new leave request
 // @route   POST /api/leave-requests
@@ -26,6 +27,31 @@ const createLeaveRequest = async (req, res) => {
       });
     }
 
+    // Check if employee has sufficient leave credits
+    const numberOfDaysFloat = parseFloat(number_of_days);
+    const hasSufficientCredits = await hasSufficientLeaveCredits(req.user.user_id, leave_type, numberOfDaysFloat);
+    
+    let isWithoutPay = false;
+    if (!hasSufficientCredits) {
+      // Get the latest leave record for this user to determine their current balance
+      const LeaveRecord = require('../models/LeaveRecord');
+      const latestLeaveRecord = await LeaveRecord
+        .findOne({ user_id: req.user.user_id })
+        .sort({ year: -1, month: -1 })
+        .exec();
+      
+      // If no record exists, use default values
+      let availableCredits = 0;
+      if (!latestLeaveRecord) {
+        availableCredits = leave_type === 'vacation' ? 15 : 12; // Default balances
+      } else {
+        availableCredits = leave_type === 'vacation' ? latestLeaveRecord.vacation_balance : latestLeaveRecord.sick_balance;
+      }
+      
+      // Set the without_pay flag to true
+      isWithoutPay = true;
+    }
+
     // Format where_spent based on location type
     let formattedWhereSpent = where_spent;
     if (where_spent === 'abroad' && location_specify) {
@@ -44,6 +70,7 @@ const createLeaveRequest = async (req, res) => {
       number_of_days: parseInt(number_of_days),
       where_spent: formattedWhereSpent,
       commutation: commutation === '1' || commutation === true,
+      without_pay: isWithoutPay,
       status: 'pending'
     });
 
@@ -85,11 +112,19 @@ const createLeaveRequest = async (req, res) => {
       // Don't fail the request if notification fails
     }
 
-    res.status(201).json({
+    // Prepare response with warning if applicable
+    const response = {
       success: true,
       message: 'Leave request submitted successfully',
       data: savedLeaveRequest
-    });
+    };
+    
+    // Add warning message if applicable
+    if (isWithoutPay) {
+      response.warning = `Insufficient ${leave_type} leave credits. You have ${availableCredits.toFixed(3)} days available but are requesting ${numberOfDaysFloat} days. This leave will be considered without pay.`;
+    }
+
+    res.status(201).json(response);
   } catch (error) {
     console.error('Error creating leave request:', error);
     res.status(500).json({

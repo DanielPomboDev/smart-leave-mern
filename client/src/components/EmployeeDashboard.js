@@ -6,9 +6,10 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 const EmployeeDashboard = () => {
-  // Sample data - in a real app, this would come from the backend
-  const vacationBalance = 15.000;
-  const sickBalance = 12.000;
+  // State for leave credits
+  const [vacationBalance, setVacationBalance] = useState(0);
+  const [sickBalance, setSickBalance] = useState(0);
+  const [loadingCredits, setLoadingCredits] = useState(true);
 
   // State for recent leave requests
   const [recentLeaveRequests, setRecentLeaveRequests] = useState([]);
@@ -71,6 +72,8 @@ const EmployeeDashboard = () => {
   // Modal states
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [warningMessage, setWarningMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
   // Fetch recent leave requests
@@ -96,8 +99,34 @@ const EmployeeDashboard = () => {
     }
   };
 
+  // Fetch current leave credits
+  const fetchLeaveCredits = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5000/api/leave-records/current', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data) {
+        setVacationBalance(response.data.vacationBalance || 0);
+        setSickBalance(response.data.sickBalance || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching leave credits:', error);
+      // Set default values in case of error
+      setVacationBalance(0);
+      setSickBalance(0);
+    } finally {
+      setLoadingCredits(false);
+    }
+  };
+
   useEffect(() => {
     fetchRecentLeaveRequests();
+    fetchLeaveCredits();
   }, []);
 
   // Set minimum start date based on today
@@ -106,11 +135,17 @@ const EmployeeDashboard = () => {
     const formattedToday = today.toISOString().split('T')[0];
     setMinStartDate(formattedToday);
     
-    // Set default dates to today
-    setQuickLeaveData(prev => ({
-      ...prev,
+    // Set default dates to today and calculate days
+    const defaultData = {
       startDate: formattedToday,
       endDate: formattedToday
+    };
+    const numberOfDays = calculateDays(defaultData);
+    
+    setQuickLeaveData(prev => ({
+      ...prev,
+      ...defaultData,
+      numberOfDays: numberOfDays
     }));
   }, []);
 
@@ -119,19 +154,6 @@ const EmployeeDashboard = () => {
     const { name, value, type, checked } = e.target;
     const newValue = type === 'checkbox' ? checked : value;
     
-    setQuickLeaveData({
-      ...quickLeaveData,
-      [name]: newValue
-    });
-
-    // Clear error for this field
-    if (quickLeaveErrors[name]) {
-      setQuickLeaveErrors({
-        ...quickLeaveErrors,
-        [name]: ''
-      });
-    }
-
     // Special handling for certain fields
     if (name === 'leaveType') {
       // Reset subtype fields when leave type changes
@@ -152,11 +174,32 @@ const EmployeeDashboard = () => {
           locationType: 'hospital'
         }));
       }
-    } else if (name === 'startDate' || name === 'endDate') {
+      return;
+    }
+
+    // Update the state with the new value
+    setQuickLeaveData(prev => {
+      const updatedData = {
+        ...prev,
+        [name]: newValue
+      };
+
       // Recalculate days when dates change
-      setTimeout(() => {
-        calculateDays({ ...quickLeaveData, [name]: newValue });
-      }, 0);
+      if (name === 'startDate' || name === 'endDate') {
+        const startDate = name === 'startDate' ? newValue : updatedData.startDate;
+        const endDate = name === 'endDate' ? newValue : updatedData.endDate;
+        updatedData.numberOfDays = calculateDays({ startDate, endDate });
+      }
+
+      return updatedData;
+    });
+
+    // Clear error for this field
+    if (quickLeaveErrors[name]) {
+      setQuickLeaveErrors({
+        ...quickLeaveErrors,
+        [name]: ''
+      });
     }
   };
 
@@ -166,13 +209,15 @@ const EmployeeDashboard = () => {
     const endDate = new Date(data.endDate);
     
     if (startDate && endDate && !isNaN(startDate) && !isNaN(endDate)) {
-      const timeDiff = Math.abs(endDate.getTime() - startDate.getTime());
+      // Reset time part to compare only dates
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+      
+      const timeDiff = endDate.getTime() - startDate.getTime();
       const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
-      setQuickLeaveData(prev => ({
-        ...prev,
-        numberOfDays: daysDiff
-      }));
+      return daysDiff > 0 ? daysDiff : 1;
     }
+    return 1; // Default to 1 day if dates are invalid
   };
 
   // Validate quick leave step
@@ -355,14 +400,24 @@ const EmployeeDashboard = () => {
   // Update end date min when start date changes
   const handleStartDateChange = (e) => {
     const newStartDate = e.target.value;
-    handleQuickLeaveChange(e);
     
     // Update end date if it's before the new start date
     if (quickLeaveData.endDate && newStartDate > quickLeaveData.endDate) {
+      const newEndDate = newStartDate;
+      const newNumberOfDays = calculateDays({ startDate: newStartDate, endDate: newEndDate });
       setQuickLeaveData(prev => ({
         ...prev,
         startDate: newStartDate,
-        endDate: newStartDate
+        endDate: newEndDate,
+        numberOfDays: newNumberOfDays
+      }));
+    } else {
+      // Just update the start date and recalculate days
+      const newNumberOfDays = calculateDays({ startDate: newStartDate, endDate: quickLeaveData.endDate });
+      setQuickLeaveData(prev => ({
+        ...prev,
+        startDate: newStartDate,
+        numberOfDays: newNumberOfDays
       }));
     }
   };
@@ -377,10 +432,16 @@ const EmployeeDashboard = () => {
     return minStartDate;
   };
 
-  // Handle leave request submission
-  const submitLeaveRequest = async () => {
-    // Close confirmation modal
-    setShowConfirmModal(false);
+  // Handle leave request submission without credit check (for warning modal)
+  const submitLeaveRequestWithoutCreditCheck = () => {
+    // Close the warning modal
+    setShowWarningModal(false);
+    // Proceed with submission
+    submitActualLeaveRequest();
+  };
+
+  // Actual leave request submission logic
+  const submitActualLeaveRequest = async () => {
     setLoading(true);
     setErrorMessage('');
 
@@ -451,6 +512,105 @@ const EmployeeDashboard = () => {
     }
   };
 
+  // Handle leave request submission
+  const submitLeaveRequest = async () => {
+    // Close confirmation modal
+    setShowConfirmModal(false);
+    setLoading(true);
+    setErrorMessage('');
+
+    try {
+      // Prepare data for submission
+      const requestData = {
+        leave_type: quickLeaveData.leaveType,
+        subtype: quickLeaveData.leaveType === 'vacation' 
+          ? quickLeaveData.vacationSubtype === 'other' 
+            ? quickLeaveData.vacationOtherSpecify 
+            : quickLeaveData.vacationSubtype
+          : quickLeaveData.sickSubtype === 'other' 
+            ? quickLeaveData.sickOtherSpecify 
+            : quickLeaveData.sickSubtype,
+        start_date: quickLeaveData.startDate,
+        end_date: quickLeaveData.endDate,
+        number_of_days: quickLeaveData.numberOfDays,
+        where_spent: quickLeaveData.locationType,
+        commutation: quickLeaveData.commutation,
+        location_specify: quickLeaveData.locationSpecify
+      };
+
+      // Check if user has sufficient leave credits before submitting
+      const hasSufficientCredits = quickLeaveData.leaveType === 'vacation' 
+        ? quickLeaveData.numberOfDays <= vacationBalance
+        : quickLeaveData.numberOfDays <= sickBalance;
+
+      // If insufficient credits, show warning modal
+      if (!hasSufficientCredits) {
+        const leaveType = quickLeaveData.leaveType === 'vacation' ? 'Vacation' : 'Sick';
+        const availableCredits = quickLeaveData.leaveType === 'vacation' ? vacationBalance : sickBalance;
+        const warningMsg = `Insufficient ${leaveType.toLowerCase()} leave credits. You have ${availableCredits.toFixed(3)} days available but are requesting ${quickLeaveData.numberOfDays} days. This leave will be considered without pay if approved by HR. Do you want to proceed?`;
+        
+        setWarningMessage(warningMsg);
+        setShowWarningModal(true);
+        setLoading(false);
+        return;
+      }
+
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      
+      // Make API call
+      const response = await axios.post('http://localhost:5000/api/leave-requests', requestData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data.success) {
+        // Show warning message if applicable
+        if (response.data.warning) {
+          // Display the warning in a modal
+          setWarningMessage(response.data.warning);
+          setShowWarningModal(true);
+          return; // Don't close the form yet
+        }
+        
+        // Show success modal
+        setShowSuccessModal(true);
+        
+        // Refresh recent leave requests to include the new one
+        await fetchRecentLeaveRequests();
+        
+        // Reset form after a delay
+        setTimeout(() => {
+          const today = new Date().toISOString().split('T')[0];
+          setQuickLeaveData({
+            step: 1,
+            leaveType: '',
+            vacationSubtype: '',
+            vacationOtherSpecify: '',
+            sickSubtype: '',
+            sickOtherSpecify: '',
+            startDate: today,
+            endDate: today,
+            numberOfDays: 1,
+            locationType: '',
+            locationSpecify: '',
+            commutation: false
+          });
+          setShowSuccessModal(false);
+        }, 3000); // Auto-close after 3 seconds
+      } else {
+        setErrorMessage(response.data.message || 'Failed to submit leave request');
+      }
+    } catch (error) {
+      console.error('Error submitting leave request:', error);
+      setErrorMessage(error.response?.data?.message || 'Failed to submit leave request. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -466,7 +626,13 @@ const EmployeeDashboard = () => {
                 </div>
                 <div className="text-blue-800 mb-1">
                   <div className="text-sm font-medium">Vacation Leave</div>
-                  <div className="text-3xl font-semibold mt-1">{vacationBalance.toFixed(3)}</div>
+                  {loadingCredits ? (
+                    <div className="text-3xl font-semibold mt-1">
+                      <span className="loading loading-spinner loading-sm"></span>
+                    </div>
+                  ) : (
+                    <div className="text-3xl font-semibold mt-1">{vacationBalance.toFixed(3)}</div>
+                  )}
                 </div>
                 <div className="text-xs text-blue-700 mt-2">
                   Days available
@@ -482,7 +648,13 @@ const EmployeeDashboard = () => {
                 </div>
                 <div className="text-green-800 mb-1">
                   <div className="text-sm font-medium">Sick Leave</div>
-                  <div className="text-3xl font-semibold mt-1">{sickBalance.toFixed(3)}</div>
+                  {loadingCredits ? (
+                    <div className="text-3xl font-semibold mt-1">
+                      <span className="loading loading-spinner loading-sm"></span>
+                    </div>
+                  ) : (
+                    <div className="text-3xl font-semibold mt-1">{sickBalance.toFixed(3)}</div>
+                  )}
                 </div>
                 <div className="text-xs text-green-700 mt-2">
                   Days available
@@ -872,6 +1044,17 @@ const EmployeeDashboard = () => {
         onClose={() => setShowSuccessModal(false)}
         title="Leave Request Submitted"
         message="Your leave request has been submitted successfully and is pending approval."
+      />
+
+      {/* Warning Modal */}
+      <ConfirmationModal
+        isOpen={showWarningModal}
+        onClose={() => setShowWarningModal(false)}
+        onConfirm={submitLeaveRequestWithoutCreditCheck}
+        title="Insufficient Leave Credits"
+        message={warningMessage}
+        confirmText="Submit Anyway"
+        cancelText="Cancel"
       />
 
       {/* Confirmation Modal */}

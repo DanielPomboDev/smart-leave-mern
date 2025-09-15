@@ -242,6 +242,14 @@ const LeaveRequestDetails = () => {
                   {leaveRequest.commutation ? 'Requested' : 'Not Requested'}
                 </p>
               </div>
+              {leaveRequest.without_pay && (
+                <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm md:col-span-2">
+                  <h5 className="font-semibold text-red-600 mb-3">Leave Without Pay</h5>
+                  <p className="font-medium text-gray-800">
+                    This leave request will be considered without pay as it exceeds your available leave credits.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Status */}

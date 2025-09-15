@@ -35,6 +35,10 @@ const leaveRequestSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  without_pay: {
+    type: Boolean,
+    default: false
+  },
   status: {
     type: String,
     enum: ['pending', 'recommended', 'hr_approved', 'approved', 'disapproved', 'cancelled'],
