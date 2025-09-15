@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from './Layout';
+import CalculateCreditsModal from './CalculateCreditsModal';
 
 const HRLeaveRecords = () => {
   const [users, setUsers] = useState([]);
@@ -18,6 +19,8 @@ const HRLeaveRecords = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Fetch departments
   const fetchDepartments = async () => {
@@ -121,6 +124,41 @@ const HRLeaveRecords = () => {
     });
   };
 
+  // Calculate credits
+    const calculateCredits = async (month, year) => {
+        try {
+            setLoading(true);
+            setError('');
+            setSuccess('');
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+
+            const response = await axios.post('http://localhost:5000/api/leave-records/calculate-credits', 
+                { month, year },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (response.data.success) {
+                setSuccess(response.data.message);
+            } else {
+                setError(response.data.message || 'Failed to calculate credits');
+            }
+        } catch (error) {
+            console.error('Error calculating credits:', error);
+            setError('Failed to calculate credits: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setLoading(false);
+            setIsModalOpen(false);
+        }
+    };
+
   // Effect to fetch departments and leave records on initial load
   useEffect(() => {
     fetchDepartments();
@@ -140,7 +178,15 @@ const HRLeaveRecords = () => {
               <i className="fi fi-rr-time-past text-blue-500 mr-2"></i>
               Leave Records
             </h2>
+            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>Calculate Credits</button>
           </div>
+
+            {success && (
+                <div className="alert alert-success mb-4">
+                    <i className="fas fa-check-circle"></i>
+                    <span>{success}</span>
+                </div>
+            )}
           
           {/* Filter Controls */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -319,6 +365,11 @@ const HRLeaveRecords = () => {
           )}
         </div>
       </div>
+      <CalculateCreditsModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onConfirm={calculateCredits} 
+      />
     </Layout>
   );
 };

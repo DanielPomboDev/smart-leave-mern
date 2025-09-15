@@ -25,4 +25,7 @@ router.put('/:id', updateLeaveRecordValidation, leaveRecordController.update);
 // POST /api/leave-records/add-undertime - Add undertime to a leave record
 router.post('/add-undertime', addUndertimeValidation, leaveRecordController.addUndertime);
 
+// POST /api/leave-records/calculate-credits - Calculate and award monthly leave credits
+router.post('/calculate-credits', leaveRecordController.calculateCredits);
+
 module.exports = router;
