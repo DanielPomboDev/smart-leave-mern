@@ -171,9 +171,16 @@ const Login = () => {
             <button 
               type="submit" 
               disabled={loading}
-              className={`btn btn-primary w-full mt-4 ${loading ? 'loading' : ''}`}
+              className="btn btn-primary w-full mt-4"
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? (
+                <>
+                  <span className="loading loading-spinner loading-sm"></span>
+                  Logging in...
+                </>
+              ) : (
+                'Login'
+              )}
             </button>
           </form>
         </div>
