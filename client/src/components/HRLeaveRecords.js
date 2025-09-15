@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import Layout from './Layout';
+import axios from '../services/api';
 import CalculateCreditsModal from './CalculateCreditsModal';
 
 const HRLeaveRecords = () => {
@@ -30,9 +30,8 @@ const HRLeaveRecords = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.get('http://localhost:5000/api/hr/departments', {
+      const response = await axios.get('/api/hr/departments', {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -63,9 +62,8 @@ const HRLeaveRecords = () => {
         search: filters.search || undefined
       };
 
-      const response = await axios.get('http://localhost:5000/api/leave-records', {
+      const response = await axios.get('/api/leave-records', {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         params
@@ -135,7 +133,7 @@ const HRLeaveRecords = () => {
                 throw new Error('No authentication token found');
             }
 
-            const response = await axios.post('http://localhost:5000/api/leave-records/calculate-credits', 
+            const response = await axios.post('/api/leave-records/calculate-credits', 
                 { month, year },
                 {
                     headers: {

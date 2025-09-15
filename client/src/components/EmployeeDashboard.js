@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import Layout from './Layout';
-import SuccessModal from './SuccessModal';
-import ConfirmationModal from './ConfirmationModal';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import Layout from './Layout';
+import axios from '../services/api';
+import RequestLeave from './RequestLeave';
 
 const EmployeeDashboard = () => {
   // State for leave credits
@@ -80,9 +79,8 @@ const EmployeeDashboard = () => {
   const fetchRecentLeaveRequests = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/leave-requests', {
+      const response = await axios.get('/api/leave-requests', {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -103,9 +101,8 @@ const EmployeeDashboard = () => {
   const fetchLeaveCredits = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/leave-records/current', {
+      const response = await axios.get('/api/leave-records/current', {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -462,15 +459,8 @@ const EmployeeDashboard = () => {
         where_spent: quickLeaveData.locationType,
         commutation: quickLeaveData.commutation,
         location_specify: quickLeaveData.locationSpecify
-      };
-
-      // Get token from localStorage
-      const token = localStorage.getItem('token');
-      
-      // Make API call
-      const response = await axios.post('http://localhost:5000/api/leave-requests', requestData, {
+      };\n\n      // Get token from localStorage\n      const token = localStorage.getItem('token');\n      \n      // Make API call\n      const response = await axios.post('/api/leave-requests', requestData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -559,9 +549,8 @@ const EmployeeDashboard = () => {
       const token = localStorage.getItem('token');
       
       // Make API call
-      const response = await axios.post('http://localhost:5000/api/leave-requests', requestData, {
+      const response = await axios.post('/api/leave-requests', requestData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });

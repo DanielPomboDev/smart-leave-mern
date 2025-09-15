@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from './Layout';
-import axios from 'axios';
+import axios from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const LeaveHistory = () => {
@@ -21,9 +21,8 @@ const LeaveHistory = () => {
       try {
         setLoading(true);
         const token = localStorage.getItem('token');
-        const response = await axios.get('http://localhost:5000/api/leave-requests', {
+        const response = await axios.get('/api/leave-requests', {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
@@ -139,9 +138,8 @@ const LeaveHistory = () => {
   const handleCancelRequest = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.delete(`http://localhost:5000/api/leave-requests/${id}`, {
+      const response = await axios.delete(`/api/leave-requests/${id}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });

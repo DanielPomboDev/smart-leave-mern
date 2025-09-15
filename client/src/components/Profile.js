@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Layout from './Layout';
-import axios from 'axios';
+import axios from '../services/api';
 
 const Profile = () => {
   const [user, setUser] = useState(null);
@@ -18,9 +18,8 @@ const Profile = () => {
       try {
         setLoading(true);
         const token = localStorage.getItem('token');
-        const response = await axios.get('http://localhost:5000/api/auth/profile', {
+        const response = await axios.get('/api/auth/profile', {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
@@ -175,9 +174,8 @@ const Profile = () => {
       setUploadError('');
 
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5000/api/auth/profile/image', formData, {
+      const response = await axios.post('/api/auth/profile/image', formData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
       });

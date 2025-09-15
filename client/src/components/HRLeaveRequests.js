@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from './Layout';
-import axios from 'axios';
+import axios from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const HRLeaveRequests = () => {
@@ -30,9 +30,8 @@ const HRLeaveRequests = () => {
         const token = localStorage.getItem('token');
         
         // Fetch departments
-        const deptResponse = await axios.get('http://localhost:5000/api/hr/departments', {
+        const deptResponse = await axios.get('/api/hr/departments', {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
@@ -43,9 +42,8 @@ const HRLeaveRequests = () => {
         
         // Fetch leave requests
         const params = new URLSearchParams(filters).toString();
-        const response = await axios.get(`http://localhost:5000/api/hr/leave-requests?${params}`, {
+        const response = await axios.get(`/api/hr/leave-requests?${params}`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });

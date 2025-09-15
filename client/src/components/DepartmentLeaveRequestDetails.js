@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from './Layout';
-import axios from 'axios';
+import axios from '../services/api';
 import { useParams, useNavigate } from 'react-router-dom';
 
 const DepartmentLeaveRequestDetails = () => {
@@ -23,9 +23,8 @@ const DepartmentLeaveRequestDetails = () => {
       try {
         const token = localStorage.getItem('token');
         console.log('Fetching leave request with ID:', id);
-        const response = await axios.get(`http://localhost:5000/api/department/leave-requests/${id}`, {
+        const response = await axios.get(`/api/department/leave-requests/${id}`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
@@ -90,7 +89,7 @@ const DepartmentLeaveRequestDetails = () => {
       const token = localStorage.getItem('token');
       
       const response = await axios.post(
-        `http://localhost:5000/api/department/leave-requests/${id}/recommend`,
+        `/api/department/leave-requests/${id}/recommend`,
         {
           recommendation,
           approval_reason: approvalReason,
@@ -107,9 +106,8 @@ const DepartmentLeaveRequestDetails = () => {
       if (response.data.success) {
         setShowSuccessModal(true);
         // Reload the leave request to show updated status
-        const updatedResponse = await axios.get(`http://localhost:5000/api/department/leave-requests/${id}`, {
+        const updatedResponse = await axios.get(`/api/department/leave-requests/${id}`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });

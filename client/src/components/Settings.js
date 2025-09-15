@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Layout from './Layout';
-import axios from 'axios';
+import axios from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const Settings = () => {
@@ -143,9 +143,8 @@ const Settings = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.put('http://localhost:5000/api/settings/password', formData, {
+      const response = await axios.put('/api/settings/password', formData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });

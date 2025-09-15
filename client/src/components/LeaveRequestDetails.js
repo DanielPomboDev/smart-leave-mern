@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from './Layout';
-import axios from 'axios';
+import axios from '../services/api';
 
 const LeaveRequestDetails = () => {
   const { id } = useParams();
@@ -16,9 +16,8 @@ const LeaveRequestDetails = () => {
     const fetchLeaveRequest = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get(`http://localhost:5000/api/leave-requests/${id}`, {
+        const response = await axios.get(`/api/leave-requests/${id}`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
@@ -105,9 +104,8 @@ const LeaveRequestDetails = () => {
   const handleCancelRequest = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.delete(`http://localhost:5000/api/leave-requests/${id}`, {
+      const response = await axios.delete(`/api/leave-requests/${id}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });

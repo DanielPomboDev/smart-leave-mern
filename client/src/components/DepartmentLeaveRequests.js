@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from './Layout';
-import axios from 'axios';
+import axios from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const DepartmentLeaveRequests = () => {
@@ -21,9 +21,8 @@ const DepartmentLeaveRequests = () => {
     const fetchLeaveRequests = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get('http://localhost:5000/api/department/leave-requests', {
+        const response = await axios.get('/api/department/leave-requests', {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });

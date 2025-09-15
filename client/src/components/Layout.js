@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../services/api';
 import NotificationDropdown from './NotificationDropdown';
 
 const Layout = ({ children, title = "Dashboard" }) => {
@@ -24,9 +24,8 @@ const Layout = ({ children, title = "Dashboard" }) => {
           return;
         }
 
-        const response = await axios.get('http://localhost:5000/api/auth/profile', {
+        const response = await axios.get('/api/auth/profile', {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });

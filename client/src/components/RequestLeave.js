@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import Layout from './Layout';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import Layout from './Layout';
+import axios from '../services/api';
 import SuccessModal from './SuccessModal';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -58,9 +58,8 @@ const RequestLeave = () => {
   const fetchLeaveCredits = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/leave-records/current', {
+      const response = await axios.get('/api/leave-records/current', {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -344,9 +343,8 @@ const RequestLeave = () => {
       const token = localStorage.getItem('token');
       
       // Make API call
-      const response = await axios.post('http://localhost:5000/api/leave-requests', requestData, {
+      const response = await axios.post('/api/leave-requests', requestData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -928,7 +926,7 @@ const RequestLeave = () => {
             const token = localStorage.getItem('token');
             
             // Make API call
-            const response = await axios.post('http://localhost:5000/api/leave-requests', requestData, {
+            const response = await axios.post('/api/leave-requests', requestData, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'

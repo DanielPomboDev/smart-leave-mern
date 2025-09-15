@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Layout from './Layout';
-import axios from 'axios';
-import { useParams } from 'react-router-dom';
+import axios from '../services/api';
 
 const HRLeaveRecord = () => {
   const { id } = useParams();
@@ -53,9 +53,8 @@ const HRLeaveRecord = () => {
           throw new Error('No authentication token found');
         }
 
-        const response = await axios.get(`http://localhost:5000/api/leave-records/${id}`, {
+        const response = await axios.get(`/api/leave-records/${id}`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
@@ -157,7 +156,7 @@ const HRLeaveRecord = () => {
       const minutes = parseInt(undertimeForm.minutes) || 0;
       const undertimeDays = calculateDaysFromTime(hours, minutes);
 
-      const response = await axios.post('http://localhost:5000/api/leave-records/add-undertime', {
+      const response = await axios.post('/api/leave-records/add-undertime', {
         user_id: employee.user_id,
         month: undertimeForm.month,
         year: undertimeForm.year,

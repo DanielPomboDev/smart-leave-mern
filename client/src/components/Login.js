@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-// Configure axios base URL
-axios.defaults.baseURL = 'http://localhost:5000';
+// Configure axios base URL using environment variable
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+axios.defaults.baseURL = API_BASE_URL;
 
 const Login = () => {
   const [formData, setFormData] = useState({

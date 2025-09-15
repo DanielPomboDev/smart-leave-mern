@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from './Layout';
-import axios from 'axios';
+import axios from '../services/api';
 import { useNavigate, useParams } from 'react-router-dom';
 
 const HRLeaveRequestDetails = () => {
@@ -34,9 +34,8 @@ const HRLeaveRequestDetails = () => {
           return;
         }
 
-        const response = await axios.get('http://localhost:5000/api/auth/profile', {
+        const response = await axios.get('/api/auth/profile', {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
@@ -60,9 +59,8 @@ const HRLeaveRequestDetails = () => {
     const fetchLeaveRequest = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get(`http://localhost:5000/api/hr/leave-requests/${id}`, {
+        const response = await axios.get(`/api/hr/leave-requests/${id}`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
@@ -166,9 +164,8 @@ const HRLeaveRequestDetails = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(`http://localhost:5000/api/hr/leave-requests/${id}/approve`, approvalData, {
+      const response = await axios.post(`/api/hr/leave-requests/${id}/approve`, approvalData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });

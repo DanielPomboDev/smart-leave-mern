@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import Layout from './Layout';
-import ConfirmationModal from './ConfirmationModal';
-import SuccessModal from './SuccessModal';
+import axios from '../services/api';
 
 const HREmployees = () => {
   const [employees, setEmployees] = useState([]);
@@ -75,9 +73,8 @@ const HREmployees = () => {
         search: filters.search
       };
 
-      const response = await axios.get('http://localhost:5000/api/hr/employees', {
+      const response = await axios.get('/api/hr/employees', {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         params
@@ -112,9 +109,8 @@ const HREmployees = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.get(`http://localhost:5000/api/hr/employees/${id}`, {
+      const response = await axios.get(`/api/hr/employees/${id}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -178,9 +174,8 @@ const HREmployees = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.post('http://localhost:5000/api/hr/employees', addForm, {
+      const response = await axios.post('/api/hr/employees', addForm, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -219,9 +214,8 @@ const HREmployees = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.put(`http://localhost:5000/api/hr/employees/${employeeToEdit._id}`, editForm, {
+      const response = await axios.put(`/api/hr/employees/${employeeToEdit._id}`, editForm, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -253,9 +247,8 @@ const HREmployees = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.delete(`http://localhost:5000/api/hr/employees/${employeeToDelete._id}`, {
+      const response = await axios.delete(`/api/hr/employees/${employeeToDelete._id}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
