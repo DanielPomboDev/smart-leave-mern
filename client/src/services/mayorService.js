@@ -38,13 +38,13 @@ apiClient.interceptors.response.use(
   }
 );
 
-const API_BASE_URL = '/api/mayor';
+const MAYOR_API_BASE_URL = '/api/mayor';
 
 // Dashboard API calls
 export const getDashboardStats = async () => {
   try {
     console.log('Fetching dashboard stats');
-    const response = await apiClient.get(`${API_BASE_URL}/dashboard/stats`);
+    const response = await apiClient.get(`${MAYOR_API_BASE_URL}/dashboard/stats`);
     console.log('Dashboard stats response:', response.data);
     return response.data;
   } catch (error) {
@@ -56,7 +56,7 @@ export const getDashboardStats = async () => {
 export const getRecentLeaveRequests = async () => {
   try {
     console.log('Fetching recent leave requests');
-    const response = await apiClient.get(`${API_BASE_URL}/dashboard/recent-requests`);
+    const response = await apiClient.get(`${MAYOR_API_BASE_URL}/dashboard/recent-requests`);
     console.log('Recent leave requests response:', response.data);
     return response.data;
   } catch (error) {
@@ -69,7 +69,7 @@ export const getRecentLeaveRequests = async () => {
 export const getLeaveRequests = async () => {
   try {
     console.log('Fetching leave requests');
-    const response = await apiClient.get(`${API_BASE_URL}/leave-requests`);
+    const response = await apiClient.get(`${MAYOR_API_BASE_URL}/leave-requests`);
     console.log('Leave requests response:', response.data);
     return response.data;
   } catch (error) {
@@ -81,7 +81,7 @@ export const getLeaveRequests = async () => {
 export const getLeaveRequestDetails = async (id) => {
   try {
     console.log('Fetching leave request details for ID:', id);
-    const response = await apiClient.get(`${API_BASE_URL}/leave-requests/${id}`);
+    const response = await apiClient.get(`${MAYOR_API_BASE_URL}/leave-requests/${id}`);
     console.log('Leave request details response:', response.data);
     return response.data;
   } catch (error) {
@@ -93,7 +93,7 @@ export const getLeaveRequestDetails = async (id) => {
 export const processLeaveRequest = async (id, decision) => {
   try {
     console.log('Processing leave request:', id, 'with decision:', decision);
-    const response = await apiClient.post(`${API_BASE_URL}/leave-requests/${id}/process`, {
+    const response = await apiClient.post(`${MAYOR_API_BASE_URL}/leave-requests/${id}/process`, {
       decision
     });
     console.log('Process leave request response:', response.data);

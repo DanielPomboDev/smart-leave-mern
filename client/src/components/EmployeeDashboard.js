@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import Layout from './Layout';
 import axios from '../services/api';
 import RequestLeave from './RequestLeave';
+import SuccessModal from './SuccessModal';
+import ConfirmationModal from './ConfirmationModal';
 
 const EmployeeDashboard = () => {
   // State for leave credits
@@ -459,7 +461,13 @@ const EmployeeDashboard = () => {
         where_spent: quickLeaveData.locationType,
         commutation: quickLeaveData.commutation,
         location_specify: quickLeaveData.locationSpecify
-      };\n\n      // Get token from localStorage\n      const token = localStorage.getItem('token');\n      \n      // Make API call\n      const response = await axios.post('/api/leave-requests', requestData, {
+      };
+
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      
+      // Make API call
+      const response = await axios.post('/api/leave-requests', requestData, {
         headers: {
           'Content-Type': 'application/json'
         }

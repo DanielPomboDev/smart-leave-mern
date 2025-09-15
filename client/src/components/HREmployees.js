@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Layout from './Layout';
 import axios from '../services/api';
+import SuccessModal from './SuccessModal';
+import ConfirmationModal from './ConfirmationModal';
 
 const HREmployees = () => {
   const [employees, setEmployees] = useState([]);
