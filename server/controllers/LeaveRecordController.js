@@ -11,10 +11,10 @@ exports.hasSufficientLeaveCredits = async (userId, leaveType, numberOfDays) => {
       .sort({ year: -1, month: -1 })
       .exec();
     
-    // If no record exists, use default values
+    // If no record exists, use 0 as default values (consistent with UI display)
     if (!latestLeaveRecord) {
-      const vacationBalance = 15; // Default vacation balance
-      const sickBalance = 12;     // Default sick balance
+      const vacationBalance = 0; // Default vacation balance
+      const sickBalance = 0;     // Default sick balance
       
       if (leaveType === 'vacation') {
         return vacationBalance >= numberOfDays;

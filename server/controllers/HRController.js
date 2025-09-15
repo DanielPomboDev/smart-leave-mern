@@ -269,8 +269,26 @@ const getHRLeaveRequest = async (req, res) => {
     leaveRequestWithRecommendations.recommendations = recommendations;
 
     // Check if employee had sufficient leave credits when submitting the request
-    // This is a simplified version - in a real app, you would check against actual leave records
-    const hasSufficientCredits = true; // Placeholder
+    const { hasSufficientLeaveCredits } = require('./LeaveRecordController');
+    const numberOfDays = parseFloat(leaveRequest.number_of_days);
+    const hasSufficientCredits = await hasSufficientLeaveCredits(leaveRequest.user_id.user_id, leaveRequest.leave_type, numberOfDays);
+    
+    // Get the employee's current leave balance
+    const LeaveRecord = require('../models/LeaveRecord');
+    const latestLeaveRecord = await LeaveRecord
+      .findOne({ user_id: leaveRequest.user_id.user_id })
+      .sort({ year: -1, month: -1 })
+      .exec();
+    
+    // Add leave balance information to the user object
+    if (latestLeaveRecord) {
+      leaveRequestWithRecommendations.user_id.vacation_balance = latestLeaveRecord.vacation_balance;
+      leaveRequestWithRecommendations.user_id.sick_balance = latestLeaveRecord.sick_balance;
+    } else {
+      // Default balances if no record exists
+      leaveRequestWithRecommendations.user_id.vacation_balance = 0;
+      leaveRequestWithRecommendations.user_id.sick_balance = 0;
+    }
 
     res.json({
       success: true,
@@ -300,7 +318,7 @@ const processHRLeaveApproval = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { approval, approved_for, disapproved_due_to } = req.body;
+    const { approval, approved_for, approved_for_other, disapproved_due_to } = req.body;
 
     const leaveRequest = await LeaveRequest.findById(id).populate('user_id');
 
@@ -347,12 +365,45 @@ const processHRLeaveApproval = async (req, res) => {
       });
     }
 
+    // If approving, validate the approved_for field
+    if (approval === 'approve') {
+      if (!approved_for || !['with_pay', 'without_pay', 'others'].includes(approved_for)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide a valid approval type (with_pay, without_pay, or others)'
+        });
+      }
+      
+      // Additional validation for insufficient credits
+      if (approved_for === 'with_pay' || approved_for === 'others') {
+        const { hasSufficientLeaveCredits } = require('./LeaveRecordController');
+        const numberOfDays = parseFloat(leaveRequest.number_of_days);
+        const hasSufficientCredits = await hasSufficientLeaveCredits(leaveRequest.user_id.user_id, leaveRequest.leave_type, numberOfDays);
+        
+        if (!hasSufficientCredits) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot approve with pay or others due to insufficient leave credits`
+          });
+        }
+      }
+      
+      // If "others" is selected, require a specification
+      if (approved_for === 'others' && (!approved_for_other || approved_for_other.trim() === '')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please specify the approval type when selecting "Others"'
+        });
+      }
+    }
+
     // Create a leave approval record
     const approvalRecord = new LeaveApproval({
       hr_manager_id: req.user.user_id,
       leave_id: id,
       approval: approval,
       approved_for: approval === 'approve' ? approved_for : null,
+      approved_for_other: approval === 'approve' && approved_for === 'others' ? approved_for_other : null,
       disapproved_due_to: approval === 'disapprove' ? disapproved_due_to : null
     });
 
@@ -360,7 +411,18 @@ const processHRLeaveApproval = async (req, res) => {
 
     // Update the leave request status
     leaveRequest.status = approval === 'approve' ? 'hr_approved' : 'disapproved';
-    leaveRequest.hr_comments = approval === 'approve' ? approved_for : disapproved_due_to;
+    
+    // Set the comments based on the approval type
+    if (approval === 'approve') {
+      if (approved_for === 'others') {
+        leaveRequest.hr_comments = approved_for_other;
+      } else {
+        leaveRequest.hr_comments = approved_for;
+      }
+    } else {
+      leaveRequest.hr_comments = disapproved_due_to;
+    }
+    
     leaveRequest.hr_approved_by = req.user.user_id;
     leaveRequest.hr_approved_at = new Date();
 

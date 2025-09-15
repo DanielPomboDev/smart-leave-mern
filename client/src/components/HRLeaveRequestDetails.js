@@ -13,14 +13,47 @@ const HRLeaveRequestDetails = () => {
     approved_for_other: '',
     disapproved_due_to: ''
   });
+  const [errors, setErrors] = useState({});
   const [currentStep, setCurrentStep] = useState(1);
   const [hasSufficientCredits, setHasSufficientCredits] = useState(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [user, setUser] = useState(null);
   
   const navigate = useNavigate();
   const { id } = useParams();
+
+  // Fetch user profile
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          navigate('/login');
+          return;
+        }
+
+        const response = await axios.get('http://localhost:5000/api/auth/profile', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.data && response.data.success) {
+          setUser(response.data.user);
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+        // If there's an error, redirect to login
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    };
+
+    fetchUserProfile();
+  }, [navigate]);
 
   // Fetch leave request details
   useEffect(() => {
@@ -37,6 +70,14 @@ const HRLeaveRequestDetails = () => {
         if (response.data.success) {
           setLeaveRequest(response.data.leaveRequest);
           setHasSufficientCredits(response.data.hasSufficientCredits);
+          
+          // If insufficient credits, default to 'without_pay' instead of 'with_pay'
+          if (!response.data.hasSufficientCredits) {
+            setApprovalData(prev => ({
+              ...prev,
+              approved_for: 'without_pay'
+            }));
+          }
         } else {
           setError(response.data.message || 'Failed to load leave request details');
         }
@@ -54,10 +95,29 @@ const HRLeaveRequestDetails = () => {
   }, [id]);
 
   const handleApprovalChange = (field, value) => {
-    setApprovalData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setApprovalData(prev => {
+      const newData = {
+        ...prev,
+        [field]: value
+      };
+      
+      // Prevent selecting 'with_pay' when user has insufficient credits
+      if (field === 'approved_for' && value === 'with_pay' && !hasSufficientCredits) {
+        // Keep the previous value or default to 'without_pay'
+        newData[field] = prev.approved_for !== 'with_pay' ? prev.approved_for : 'without_pay';
+      }
+      
+      return newData;
+    });
+    
+    // Clear error when user makes changes
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
   };
 
   const toggleDecisionOptions = () => {
@@ -65,6 +125,28 @@ const HRLeaveRequestDetails = () => {
   };
 
   const nextStep = (step) => {
+    // Validation for step 2 before proceeding to step 3
+    if (step === 2) {
+      const newErrors = {};
+      
+      // If approving, check approval type selections
+      if (approvalData.approval === 'approve') {
+        // If "others" is selected, require specification
+        if (approvalData.approved_for === 'others' && (!approvalData.approved_for_other || approvalData.approved_for_other.trim() === '')) {
+          newErrors.approved_for_other = 'Please specify the approval type when selecting "Others"';
+        }
+      } 
+      // If disapproving, require reason
+      else if (approvalData.approval === 'disapprove' && (!approvalData.disapproved_due_to || approvalData.disapproved_due_to.trim() === '')) {
+        newErrors.disapproved_due_to = 'Please provide a reason for disapproval';
+      }
+      
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        return;
+      }
+    }
+    
     setCurrentStep(step + 1);
   };
 
@@ -193,7 +275,7 @@ const HRLeaveRequestDetails = () => {
             <div className="alert alert-warning shadow-lg mb-6">
               <div>
                 <i className="fas fa-info-circle text-warning"></i>
-                <span><strong>Notice:</strong> This leave request was submitted with insufficient leave credits. The "with pay" option has been disabled.</span>
+                <span><strong>Notice:</strong> This leave request was submitted with insufficient leave credits. The "with pay" option has been disabled. The leave will be considered without pay.</span>
               </div>
             </div>
           )}
@@ -236,7 +318,9 @@ const HRLeaveRequestDetails = () => {
                         {leaveRequest.user_id?.position || 'Position not specified'}
                       </p>
                       <p className="text-sm text-gray-500 mt-1">
-                        {leaveRequest.leave_type === 'vacation' ? 'Vacation' : 'Sick'} Balance: {leaveRequest.user_id?.leave_balance || 0} days
+                        {leaveRequest.leave_type === 'vacation' 
+                          ? `Vacation Balance: ${leaveRequest.user_id?.vacation_balance?.toFixed(3) || 0} days` 
+                          : `Sick Balance: ${leaveRequest.user_id?.sick_balance?.toFixed(3) || 0} days`}
                       </p>
                       {!hasSufficientCredits && (
                         <div className="badge badge-warning mt-2">Submitted with insufficient credits</div>
@@ -411,6 +495,36 @@ const HRLeaveRequestDetails = () => {
                             />
                             <span>Approved for {leaveRequest.number_of_days} day(s) without pay</span>
                           </label>
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              name="approved_for" 
+                              value="others"
+                              className="radio radio-sm radio-info" 
+                              checked={approvalData.approved_for === 'others'}
+                              onChange={(e) => handleApprovalChange('approved_for', e.target.value)}
+                              disabled={!hasSufficientCredits}
+                            />
+                            <span>Others (specify)</span>
+                            {!hasSufficientCredits && (
+                              <span className="badge badge-warning ml-2">Insufficient credits</span>
+                            )}
+                          </label>
+                          {approvalData.approved_for === 'others' && (
+                            <div className="mt-2 ml-6">
+                              <input
+                                type="text"
+                                name="approved_for_other"
+                                className={`input input-bordered input-sm w-full max-w-xs ${errors.approved_for_other ? 'input-error' : ''}`}
+                                placeholder="Please specify"
+                                value={approvalData.approved_for_other}
+                                onChange={(e) => handleApprovalChange('approved_for_other', e.target.value)}
+                              />
+                              {errors.approved_for_other && (
+                                <div className="text-red-500 text-sm mt-1">{errors.approved_for_other}</div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -425,11 +539,14 @@ const HRLeaveRequestDetails = () => {
                         </label>
                         <textarea 
                             name="disapproved_due_to" 
-                            className="textarea textarea-bordered h-24"
+                            className={`textarea textarea-bordered h-24 ${errors.disapproved_due_to ? 'textarea-error' : ''}`}
                             placeholder="Enter reason for disapproval..."
                             value={approvalData.disapproved_due_to}
                             onChange={(e) => handleApprovalChange('disapproved_due_to', e.target.value)}
                           ></textarea>
+                          {errors.disapproved_due_to && (
+                            <div className="text-red-500 text-sm mt-1">{errors.disapproved_due_to}</div>
+                          )}
                       </div>
                     </div>
                   )}
@@ -573,10 +690,10 @@ const HRLeaveRequestDetails = () => {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">HR Personnel</label>
                           <p className="font-medium text-gray-800" id="hrPersonnelName">
-                            {/* This would be the logged in HR user's name */}
+                            {user?.first_name} {user?.last_name}
                           </p>
                           <p className="text-sm text-gray-500" id="hrPersonnelPosition">
-                            {/* This would be the logged in HR user's position */}
+                            HR Officer
                           </p>
                         </div>
                         <div>
@@ -588,14 +705,23 @@ const HRLeaveRequestDetails = () => {
                             {approvalData.approval === 'approve' 
                               ? (approvalData.approved_for === 'with_pay' 
                                   ? 'Approved for days with pay' 
-                                  : 'Approved for days without pay')
+                                  : approvalData.approved_for === 'without_pay'
+                                  ? 'Approved for days without pay'
+                                  : approvalData.approved_for_other || 'Others (specify)')
                               : approvalData.disapproved_due_to || '—'}
                           </p>
                         </div>
                       </div>
                     </div>
                     {/* Submit Button */}
-                    <div className="flex justify-end mt-6">
+                    <div className="flex justify-between mt-6">
+                      <button 
+                        type="button"
+                        className="btn btn-outline border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white"
+                        onClick={() => prevStep(3)}
+                      >
+                        Previous
+                      </button>
                       {leaveRequest.status === 'recommended' ? (
                         <button 
                           type="submit" 

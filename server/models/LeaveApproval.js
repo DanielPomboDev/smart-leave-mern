@@ -24,6 +24,9 @@ const leaveApprovalSchema = new mongoose.Schema({
   approved_for: {
     type: String
   },
+  approved_for_other: {
+    type: String
+  },
   disapproved_due_to: {
     type: String
   }
